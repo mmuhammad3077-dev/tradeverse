@@ -1,0 +1,347 @@
+<!--PWA-START--><!doctype html>
+<html lang="ur-Latn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--PWA-END-->
+<title>TradeVerse Admin</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Lexend:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: control-room column (max 1100px); summary tiles, then charts, then the players table. Dark-first, same palette as the game. */
+:root{
+  --bg:#0B1220; --surface:#121B2E; --surface-2:#1A2540; --ink:#E6EAF2; --muted:#8C97AD; --line:#26324D;
+  --accent:#3BA4FF; --accent-ink:#06101F; --gold:#C9A45C; --up:#3FBF8F; --down:#E06A6A; --warn:#E0A84A;
+  --font-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --font-body:"Lexend","Segoe UI",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){
+  --bg:#EEF1F6; --surface:#FFFFFF; --surface-2:#E3E8F0; --ink:#121A2B; --muted:#596379; --line:#CDD4E0;
+  --accent:#1F6FD1; --accent-ink:#FFFFFF; --gold:#94701F; --up:#2E8B6A; --down:#C0504D; --warn:#A86E12; color-scheme:light }}
+:root[data-theme="light"]{
+  --bg:#EEF1F6; --surface:#FFFFFF; --surface-2:#E3E8F0; --ink:#121A2B; --muted:#596379; --line:#CDD4E0;
+  --accent:#1F6FD1; --accent-ink:#FFFFFF; --gold:#94701F; --up:#2E8B6A; --down:#C0504D; --warn:#A86E12; color-scheme:light }
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14px;line-height:1.5}
+.wrap{max-width:1100px;margin:0 auto;padding-block:16px 40px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--font-display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1{font-size:24px} h2{font-size:17px} h3{font-size:15px}
+p{margin:0}
+.muted{color:var(--muted)}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 14px;border-radius:10px;background:var(--surface-2);font-weight:500;white-space:nowrap;text-decoration:none;color:var(--ink)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn.sm{min-height:32px;padding:0 10px;font-size:13px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.brand small{display:block;color:var(--gold);font-family:var(--font-display);font-size:14px}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
+.tab{min-height:36px;padding:0 14px;border-radius:9px;color:var(--muted);font-weight:500}
+.tab[aria-selected="true"]{background:var(--surface-2);color:var(--ink)}
+.banner{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;justify-content:space-between;border:1px solid color-mix(in srgb, var(--warn) 45%, transparent);background:color-mix(in srgb, var(--warn) 10%, var(--surface));border-radius:12px;padding:12px 14px}
+.banner.live{border-color:color-mix(in srgb, var(--up) 45%, transparent);background:color-mix(in srgb, var(--up) 9%, var(--surface))}
+.banner p{min-width:0;flex:1 1 280px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media (max-width:760px){ .tiles{grid-template-columns:repeat(2,1fr)} }
+.tile b{display:block;font-family:var(--font-mono);font-size:26px;font-weight:500;font-variant-numeric:tabular-nums;margin-top:2px}
+.tile small{color:var(--muted);font-size:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:760px){ .grid2{grid-template-columns:1fr} }
+.hbar{display:grid;grid-template-columns:110px 1fr 36px;gap:10px;align-items:center;font-size:13px}
+.hbar .track{height:10px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.hbar .track i{display:block;height:100%;border-radius:99px;background:var(--accent)}
+.hbar.gold .track i{background:var(--gold)}
+.bars{display:flex;flex-direction:column;gap:9px;margin-top:12px}
+svg text{fill:var(--muted);font-family:var(--font-mono);font-size:10px}
+.split{display:flex;height:12px;border-radius:99px;overflow:hidden;margin-top:12px;background:var(--surface-2)}
+.split i{display:block;height:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--c);margin-right:6px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tools input[type=search],.fld input,.tools select{min-height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);padding:0 12px;min-width:0}
+.tools input[type=search]{flex:1 1 220px}
+.chip{min-height:34px;padding:0 12px;border-radius:99px;border:1px solid var(--line);font-size:13px;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:860px;font-size:13px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--surface);position:sticky;top:0}
+th button{color:inherit;font:inherit;text-transform:inherit;letter-spacing:inherit}
+td.num,th.num{text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--surface-2)}
+tbody tr:last-child td{border-bottom:none}
+.pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;background:var(--surface-2);color:var(--ink);font-weight:500}
+.pill.r0{background:color-mix(in srgb, var(--muted) 22%, transparent)}
+.pill.r1{background:color-mix(in srgb, var(--accent) 18%, transparent)}
+.pill.r2{background:color-mix(in srgb, var(--accent) 32%, transparent)}
+.pill.r3,.pill.r4,.pill.r5{background:color-mix(in srgb, var(--gold) 30%, transparent)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--muted)}
+.dot.on{background:var(--up)}
+.kid{color:var(--warn);font-size:11px;font-weight:600;margin-left:6px}
+.overlay{position:fixed;inset:0;background:rgba(4,8,16,.62);display:flex;justify-content:flex-end;z-index:20}
+.drawer{background:var(--surface);width:min(420px,100%);height:100%;overflow:auto;padding:20px max(20px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) 20px;display:flex;flex-direction:column;gap:14px;border-left:1px solid var(--line)}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:8px 12px;font-size:14px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.fld{display:flex;flex-direction:column;gap:4px;flex:1 1 240px;min-width:0}
+.fld span{font-size:12px;color:var(--muted)}
+.phone{width:min(390px,100%);height:760px;max-height:80vh;border-radius:34px;border:10px solid #050912;background:#050912;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.45);margin:0 auto}
+.phone iframe{width:100%;height:100%;border:0;display:block;background:var(--bg)}
+.gate{min-height:70vh;display:grid;place-items:center}
+.gate form{width:min(360px,100%);display:flex;flex-direction:column;gap:12px}
+.gate input{min-height:52px;border-radius:12px;border:1px solid var(--line);background:var(--surface);padding:0 14px;font-family:var(--font-mono);font-size:22px;letter-spacing:.3em;text-align:center}
+.err{color:var(--down);font-size:13px}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+@media (prefers-reduced-motion: no-preference){ .drawer{animation:slide .18s ease-out} @keyframes slide{from{transform:translateX(24px);opacity:.6}} }
+</style>
+
+<div class="wrap" id="gateView">
+  <div class="gate">
+    <form id="gateForm" autocomplete="off">
+      <div><span class="label">TradeVerse</span><h1>Admin</h1></div>
+      <p class="muted">Admin PIN likho.</p>
+      <input id="pin" type="password" inputmode="numeric" maxlength="12" aria-label="Admin PIN" autofocus>
+      <p class="err" id="pinErr" hidden>PIN ghalat hai. Dobara koshish karo.</p>
+      <button class="btn primary" type="submit" style="min-height:48px">Kholo</button>
+      <p class="muted" style="font-size:12px">Ye PIN sirf is page ko chhupata hai. Players ki asli hifazat Google Sheet ki admin key se hoti hai, jo Google ke server par check hoti hai.</p>
+    </form>
+  </div>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header class="top">
+    <div class="brand"><h1>TradeVerse Admin</h1><small>Players aur unka safar</small></div>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-v="overview" aria-selected="true">Overview</button>
+      <button class="tab" role="tab" data-v="players" aria-selected="false">Players</button>
+      <button class="tab" role="tab" data-v="game" aria-selected="false">Player view</button>
+      <button class="tab" role="tab" data-v="connect" aria-selected="false">Connect</button>
+    </nav>
+  </header>
+
+  <div class="banner" id="srcBanner"></div>
+
+  <section id="v-overview" class="stack" style="display:flex;flex-direction:column;gap:12px">
+    <div class="tiles" id="tiles"></div>
+    <div class="grid2">
+      <div class="card"><h2>Rank ke hisaab se players</h2><div class="bars" id="byRank"></div></div>
+      <div class="card"><h2>Naye players, pichhle 14 din</h2><div id="byDay" style="margin-top:12px"></div></div>
+      <div class="card"><h2>Trading ka tajurba</h2><div class="bars" id="byExp"></div></div>
+      <div class="card"><h2>Stage aur zabaan</h2><div class="bars" id="byStage"></div>
+        <div class="split" id="langSplit"></div><div class="legend" id="langLegend"></div></div>
+    </div>
+    <div class="card"><div class="top"><h2>Naye players</h2><button class="btn ghost sm" data-go="players">Sab dekho</button></div><div id="recent" style="margin-top:10px"></div></div>
+  </section>
+
+  <section id="v-players" hidden style="display:flex;flex-direction:column;gap:12px">
+    <div class="tools">
+      <input type="search" id="q" placeholder="Naam, email ya number dhoondo" aria-label="Search players">
+      <select id="sort" aria-label="Sort">
+        <option value="Joined">Naye pehle</option><option value="LastSeen">Abhi active pehle</option>
+        <option value="XP">XP zyada pehle</option><option value="Stage">Stage zyada pehle</option><option value="Coins">Coins zyada pehle</option><option value="Name">Naam (A-Z)</option>
+      </select>
+      <button class="btn ghost" id="copyCsv">CSV copy karo</button>
+    </div>
+    <div class="tools" id="expChips"></div>
+    <p class="muted" id="count" style="font-size:13px"></p>
+    <div class="tablebox"><table>
+      <thead><tr><th>Player</th><th>Contact</th><th class="num">Umar</th><th>Tajurba</th><th>Rank</th><th class="num">Stage</th><th class="num">XP</th><th class="num">Coins</th><th class="num">Stars</th><th>Academy</th><th>Aakhri dafa</th><th>Joined</th></tr></thead>
+      <tbody id="rows"></tbody></table></div>
+  </section>
+
+  <section id="v-game" hidden style="display:flex;flex-direction:column;gap:12px">
+    <div class="card top"><div style="min-width:0;flex:1 1 280px"><h2>Player view</h2><p class="muted">Game bilkul waisa jaisa player ko phone par dikhta hai. Yahan khelne se aap ke apne browser ka progress banta hai, kisi player ka nahi.</p></div>
+      <a class="btn primary" id="gameLink" href="index.html" target="_blank" rel="noopener">Naye tab mein kholo</a></div>
+    <div id="gameBox"></div>
+  </section>
+
+  <section id="v-connect" hidden style="display:flex;flex-direction:column;gap:12px">
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <h2>Google Sheet se jodo</h2>
+      <p class="muted">Apps Script ka Web app URL aur wo ADMIN_KEY likho jo aap ne apps-script.gs mein rakhi hai. Ye dono sirf isi browser mein mehfooz rehte hain.</p>
+      <form id="cfg" class="tools" style="align-items:flex-end">
+        <label class="fld"><span>Web app URL</span><input id="cUrl" placeholder="https://script.google.com/macros/s/.../exec"></label>
+        <label class="fld"><span>Admin key</span><input id="cKey" type="password" autocomplete="off"></label>
+        <button class="btn primary" type="submit">Live data lao</button>
+        <button class="btn ghost" type="button" id="cSample">Sample data dikhao</button>
+      </form>
+      <p id="cMsg" class="muted" style="font-size:13px"></p>
+    </div>
+    <div class="card"><h3>Kaise kaam karta hai</h3>
+      <ol class="muted" style="margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px">
+        <li>Game player ka card aur progress (stage, rank, XP, coins, stars) Sheet mein bhejta hai. Har player ki ek hi row hoti hai jo update hoti rehti hai.</li>
+        <li>Ye admin page Sheet ko admin key ke saath parhta hai. Ghalat key par Google kuch nahi deta.</li>
+        <li>Live data sirf hosted page (GitHub Pages) par aata hai. Claude ka preview link bahar se data nahi la sakta, is liye wahan sample data dikhta hai.</li>
+      </ol></div>
+  </section>
+</div>
+
+<div class="overlay" id="ov" hidden><aside class="drawer" id="drawer" role="dialog" aria-modal="true"></aside></div>
+
+<script>
+/* ===== config ===== */
+// PIN check: sha256("sukoon-admin:" + PIN). Default PIN 2580. To change it, see README.md.
+const PIN_HASH = "5669e789002f3ec97ac72e7f9df2b9cafe4ca938c6691f72721b110b6bfef3d7";
+const GAME_URL = "index.html";                                     // the hosted game, next to this file
+const PREVIEW_GAME = "https://claude.ai/artifact/8qf6bkFZC5dkuaSN8szRiD"; // game preview link
+const RANKS = [["Rookie",0],["Apprentice",300],["Trader",900],["Pro",2000],["Master",4000],["Legend",7000]];
+const EXP = {none:"Bilkul naya", little:"Thora sa", some:"Kuch trades", pro:"Tajurbakar"};
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const store={ get(k){ try{ return localStorage.getItem("sm-admin-"+k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem("sm-admin-"+k,v); }catch(e){} } };
+const IN_PREVIEW = /claude|usercontent/i.test(location.hostname) || !/^https?:$/.test(location.protocol);
+const esc=v=>String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num=v=>Number(v)||0;
+const rankOf=xp=>{ let i=0; RANKS.forEach(([n,x],k)=>{ if(num(xp)>=x) i=k; }); return i; };
+const DAY=864e5;
+function ago(iso){ if(!iso) return "-"; const d=(Date.now()-new Date(iso))/DAY; if(d<1/24) return "abhi"; if(d<1) return Math.round(d*24)+" ghante pehle"; if(d<2) return "kal"; return Math.round(d)+" din pehle"; }
+function dstr(iso){ if(!iso) return "-"; const d=new Date(iso); return d.toLocaleDateString("en-GB",{day:"numeric",month:"short"}); }
+
+/* ===== sample data (clearly examples, not real players) ===== */
+function sample(){
+  const names=["Ayesha Malik","Bilal Ahmed","Hamza Qureshi","Fatima Noor","Usman Tariq","Zainab Hussain","Saad Iqbal","Maryam Raza","Ahmed Ali","Hira Shah","Omar Farooq","Sana Javed","Daniyal Khan","Iqra Siddiqui","Fahad Butt","Noor Fatima","Talha Mirza","Rabia Anwar","Kashif Abbasi","Mehwish Aslam","Areeb Zafar","Laiba Sheikh","Yasir Chaudhry","Amna Rehman"];
+  let s=7; const r=()=>{ s=(s*16807)%2147483647; return (s-1)/2147483646; };
+  const exps=["none","none","none","little","little","some","pro"];
+  return names.map((n,i)=>{ const e=exps[Math.floor(r()*exps.length)], base={none:0,little:100,some:200,pro:350}[e];
+    const xp=Math.round(base + r()*r()*3200), joined=Date.now()-Math.floor(r()*30)*DAY-Math.floor(r()*20)*36e5, seen=Math.min(Date.now(), joined+Math.floor(r()*r()*30)*DAY);
+    const stage=Math.min(9, 1+Math.floor(xp/450)+(e==="pro"?2:e==="some"?1:0)), age= i===5? 11 : 14+Math.floor(r()*30);
+    return {Joined:new Date(joined).toISOString(), LastSeen:new Date(seen).toISOString(), Name:n, Email:n.toLowerCase().replace(/[^a-z]+/g,".")+"@example.com",
+      Phone:"0300 "+String(1000000+Math.floor(r()*8999999)), Age:age, Experience:e, Language:r()<.72?"ur":"en", Stage:stage, Rank:RANKS[rankOf(xp)][0], XP:xp,
+      Academy: xp>=2000&&stage>=6? "open":"locked", Readiness: Math.min(95,Math.round(xp/45+r()*15)), Challenge: xp>=2000&&stage>=6? (r()<.5?"A passed":"B in progress") : "-", Coins:Math.round(100+xp*.6), MarketDays:Math.max(0,(stage-2)*4+Math.floor(r()*6)), Stars:Math.min(36,Math.round(xp/60)), Badges:Math.min(14,Math.round(xp/400)), Streak:Math.floor(r()*6), Consent:true, sample:true}; });
+}
+
+/* ===== state ===== */
+let P=[], SRC="sample", FILTER="all";
+function setData(list, src){ P=list.map(p=>Object.assign({},p,{XP:num(p.XP),Stage:num(p.Stage),Coins:num(p.Coins),Stars:num(p.Stars),Age:num(p.Age)})); SRC=src; renderAll(); }
+
+function banner(){
+  const b=$("#srcBanner");
+  if(SRC==="live"){ b.className="banner live"; b.innerHTML=`<p><b>Live data</b> Google Sheet se, ${P.length} players. Aakhri dafa laya: ${new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}.</p><button class="btn ghost sm" id="reload">Dobara lao</button>`; $("#reload").onclick=loadLive; }
+  else { b.className="banner"; b.innerHTML=`<p><b>Ye sample data hai.</b> Neeche ke naam aur numbers misaal ke liye hain, asli players nahi. ${IN_PREVIEW? "Asli players hosted admin page (GitHub Pages) par dikhenge." : "Asli players dekhne ke liye Connect mein Sheet jodo."}</p><button class="btn ghost sm" data-go="connect">Connect</button>`; }
+  $$("#srcBanner [data-go]").forEach(x=>x.onclick=()=>go(x.dataset.go));
+}
+
+function hbars(el, rows, cls=""){ const max=Math.max(1,...rows.map(r=>r[1]));
+  el.innerHTML=rows.map(([k,v])=>`<div class="hbar ${cls}"><span>${esc(k)}</span><div class="track"><i style="width:${v/max*100}%"></i></div><span class="mono" style="text-align:right">${v}</span></div>`).join(""); }
+
+function renderOverview(){
+  const now=Date.now(), wk=P.filter(p=>now-new Date(p.Joined)<7*DAY).length, act=P.filter(p=>now-new Date(p.LastSeen)<7*DAY).length;
+  const avgSt=P.length? (P.reduce((a,p)=>a+p.Stage,0)/P.length):0, kids=P.filter(p=>p.Age>0&&p.Age<13).length, coins=P.reduce((a,p)=>a+p.Coins,0);
+  $("#tiles").innerHTML=[["Kul players",P.length,`${kids} players 13 saal se kam`],["Is hafte naye",wk,"pichhle 7 din"],["Active",act,"pichhle 7 din mein khela"],["Average stage",avgSt.toFixed(1),`${P.filter(p=>p.Academy==="open").length} players Academy mein`]]
+    .map(([l,v,s])=>`<div class="card tile"><span class="label">${l}</span><b>${v}</b><small>${s}</small></div>`).join("");
+  hbars($("#byRank"), RANKS.map(([n],i)=>[n, P.filter(p=>rankOf(p.XP)===i).length]));
+  hbars($("#byExp"), Object.entries(EXP).map(([k,l])=>[l, P.filter(p=>p.Experience===k).length]), "gold");
+  const stg={}; P.forEach(p=>{ const k=p.Stage>=7?"Stage 7+ (endless)":"Stage "+p.Stage; stg[k]=(stg[k]||0)+1; });
+  hbars($("#byStage"), Object.keys(stg).sort((a,b)=>parseInt(a.replace(/\D/g,""))-parseInt(b.replace(/\D/g,""))).map(k=>[k.replace(" (endless)",""),stg[k]]));
+  const ur=P.filter(p=>p.Language!=="en").length, en=P.length-ur, tot=Math.max(1,P.length);
+  $("#langSplit").innerHTML=`<i style="width:${ur/tot*100}%;background:var(--accent)"></i><i style="width:${en/tot*100}%;background:var(--gold)"></i>`;
+  $("#langLegend").innerHTML=`<span style="--c:var(--accent)">Roman Urdu ${ur}</span><span style="--c:var(--gold)">English ${en}</span>`;
+  // signups per day, last 14 days
+  const days=[...Array(14)].map((_,i)=>{ const d=new Date(now-(13-i)*DAY); d.setHours(0,0,0,0); return d; });
+  const cnt=days.map(d=>P.filter(p=>{ const j=new Date(p.Joined); return j>=d && j<new Date(+d+DAY); }).length);
+  const W=520,H=150,pl=24,pb=22,max=Math.max(2,...cnt), top=Math.ceil(max/2)*2, bw=(W-pl)/14;
+  const y=v=>H-pb-(v/top)*(H-pb-10);
+  $("#byDay").innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Naye players har din">
+    ${[0,top/2,top].map(v=>`<line x1="${pl}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${pl-6}" y="${y(v)+3}" text-anchor="end">${v}</text>`).join("")}
+    ${cnt.map((v,i)=>`<rect x="${pl+i*bw+bw*.18}" y="${y(v)}" width="${bw*.64}" height="${Math.max(0,H-pb-y(v))}" rx="3" fill="${i===13?"var(--gold)":"var(--accent)"}"><title>${dstr(days[i])}: ${v}</title></rect>`).join("")}
+    ${[0,4,9,13].map(i=>`<text x="${pl+i*bw+bw/2}" y="${H-6}" text-anchor="middle">${dstr(days[i])}</text>`).join("")}</svg>`;
+  const rec=[...P].sort((a,b)=>new Date(b.Joined)-new Date(a.Joined)).slice(0,5);
+  $("#recent").innerHTML=rec.length? `<div class="tablebox" style="border:none"><table style="min-width:560px"><tbody>${rec.map(rowHTML).join("")}</tbody></table></div>` : `<p class="empty">Abhi koi player nahi.</p>`;
+  bindRows("#recent");
+}
+function rowHTML(p){ const i=P.indexOf(p), r=rankOf(p.XP), on=Date.now()-new Date(p.LastSeen)<2*DAY;
+  return `<tr data-i="${i}" tabindex="0"><td><span class="dot ${on?"on":""}"></span><b>${esc(p.Name)}</b>${p.Age>0&&p.Age<13?`<span class="kid">13-</span>`:""}</td><td class="muted">${esc(p.Email)}<br>${esc(p.Phone)}</td><td class="num">${p.Age||"-"}</td><td>${esc(EXP[p.Experience]||p.Experience||"-")}</td><td><span class="pill r${r}">${RANKS[r][0]}</span></td><td class="num">${p.Stage}</td><td class="num">${p.XP.toLocaleString("en-US")}</td><td class="num">${p.Coins.toLocaleString("en-US")}</td><td class="num">${p.Stars}</td><td>${p.Academy==="open"?`<span class="pill r3">Open · ${num(p.Readiness)}</span>`:`<span class="muted">Band</span>`}</td><td>${ago(p.LastSeen)}</td><td>${dstr(p.Joined)}</td></tr>`; }
+function bindRows(sel){ $$(sel+" tr[data-i]").forEach(tr=>{ const open=()=>detail(P[+tr.dataset.i]); tr.onclick=open; tr.onkeydown=e=>{ if(e.key==="Enter") open(); }; }); }
+
+function filtered(){
+  const q=$("#q").value.trim().toLowerCase(), s=$("#sort").value;
+  let L=P.filter(p=>(FILTER==="all"||p.Experience===FILTER||(FILTER==="kids"&&p.Age>0&&p.Age<13)) && (!q || [p.Name,p.Email,p.Phone].join(" ").toLowerCase().includes(q)));
+  L.sort((a,b)=> s==="Name"? String(a.Name).localeCompare(b.Name) : (s==="Joined"||s==="LastSeen")? new Date(b[s])-new Date(a[s]) : b[s]-a[s]);
+  return L;
+}
+function renderPlayers(){
+  const chips=[["all","Sab"],...Object.entries(EXP),["kids","13 se kam umar"]];
+  $("#expChips").innerHTML=chips.map(([k,l])=>`<button class="chip" data-f="${k}" aria-pressed="${FILTER===k}">${l}</button>`).join("");
+  $$("#expChips .chip").forEach(c=>c.onclick=()=>{ FILTER=c.dataset.f; renderPlayers(); });
+  const L=filtered(); $("#count").textContent=`${L.length} / ${P.length} players`;
+  $("#rows").innerHTML=L.length? L.map(rowHTML).join("") : `<tr><td colspan="12" class="empty">Koi player nahi mila.</td></tr>`;
+  bindRows("#rows");
+}
+function detail(p){
+  const r=rankOf(p.XP), next=RANKS[r+1], pct=next? Math.round((p.XP-RANKS[r][1])/(next[1]-RANKS[r][1])*100):100, digits=String(p.Phone).replace(/\D/g,"").replace(/^0/,"92");
+  $("#drawer").innerHTML=`<div class="top"><div><span class="label">${p.sample?"Sample player":"Player"}</span><h2 style="font-size:20px">${esc(p.Name)}</h2></div><button class="btn ghost sm" id="dx">Band karo</button></div>
+    <div class="card" style="display:flex;flex-direction:column;gap:8px"><div class="top"><span class="pill r${r}">${RANKS[r][0]}</span><span class="mono muted">${p.XP.toLocaleString("en-US")} XP</span></div>
+      <div class="hbar" style="grid-template-columns:1fr"><div class="track"><i style="width:${pct}%"></i></div></div>
+      <small class="muted">${next? `${next[1]-p.XP} XP aur, phir ${next[0]}` : "Sab se ooncha rank"}</small></div>
+    <dl class="kv">
+      <dt>Email</dt><dd>${esc(p.Email)}</dd><dt>Contact</dt><dd>${esc(p.Phone)}</dd>
+      <dt>Umar</dt><dd>${p.Age||"-"}${p.Age>0&&p.Age<13?' <span class="kid">walidain ki ijazat di gayi</span>':""}</dd>
+      <dt>Tajurba</dt><dd>${esc(EXP[p.Experience]||p.Experience||"-")}</dd><dt>Zabaan</dt><dd>${p.Language==="en"?"English":"Roman Urdu"}</dd>
+      <dt>Stage</dt><dd>${p.Stage}${p.Stage>=7?" (endless)":""}</dd><dt>Coins</dt><dd class="mono">${p.Coins.toLocaleString("en-US")}</dd>
+      <dt>Stars</dt><dd class="mono">${p.Stars} / 36</dd><dt>Badges</dt><dd class="mono">${num(p.Badges)} / 18</dd>
+      <dt>Academy</dt><dd>${p.Academy==="open"?"Khuli":"Band"}</dd><dt>Readiness</dt><dd class="mono">${num(p.Readiness)} / 100</dd><dt>Challenge</dt><dd>${esc(p.Challenge||"-")}</dd><dt>Market din</dt><dd class="mono">${num(p.MarketDays)}</dd><dt>Sabr streak</dt><dd class="mono">${num(p.Streak)}</dd>
+      <dt>Joined</dt><dd>${dstr(p.Joined)}</dd><dt>Aakhri dafa</dt><dd>${ago(p.LastSeen)}</dd><dt>Ijazat</dt><dd>${p.Consent===false||p.Consent==="FALSE"?"Nahi":"Haan"}</dd>
+    </dl>
+    <div class="tools"><button class="btn ghost" id="cpE">Email copy</button><button class="btn ghost" id="cpP">Number copy</button>${digits.length>=11?`<a class="btn primary" href="https://wa.me/${digits}" target="_blank" rel="noopener">WhatsApp</a>`:""}</div>
+    <p class="muted" style="font-size:12px">Players se sirf wahi raabta karo jis ki unhon ne ijazat di hai.</p>`;
+  $("#ov").hidden=false; $("#dx").focus();
+  $("#dx").onclick=closeD; $("#cpE").onclick=e=>copy(p.Email,e.target); $("#cpP").onclick=e=>copy(p.Phone,e.target);
+}
+function closeD(){ $("#ov").hidden=true; }
+$("#ov").addEventListener("click",e=>{ if(e.target.id==="ov") closeD(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeD(); });
+function copy(text, btn){ const done=()=>{ const t=btn.textContent; btn.textContent="Copy ho gaya"; setTimeout(()=>btn.textContent=t,1500); };
+  try{ navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done)); }catch(e){ fallbackCopy(text,done); } }
+function fallbackCopy(text, done){ const ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select(); try{ document.execCommand("copy"); done(); }catch(e){} ta.remove(); }
+$("#copyCsv").onclick=e=>{ const cols=["Name","Email","Phone","Age","Experience","Language","Stage","Rank","XP","Coins","Stars","Badges","MarketDays","Streak","Academy","Readiness","Challenge","Joined","LastSeen"];
+  const csv=[cols.join(",")].concat(filtered().map(p=>cols.map(c=>`"${String(c==="Rank"?RANKS[rankOf(p.XP)][0]:p[c]??"").replace(/"/g,'""')}"`).join(","))).join("\n"); copy(csv, e.target); };
+$("#q").oninput=renderPlayers; $("#sort").onchange=renderPlayers;
+
+function renderGame(){
+  const url = IN_PREVIEW? PREVIEW_GAME : GAME_URL; $("#gameLink").href=url;
+  $("#gameBox").innerHTML = IN_PREVIEW
+    ? `<div class="card empty">Preview mein game yahan andar nahi khul sakta. Upar wala button game ko naye tab mein kholta hai. Hosted admin page par game yahan phone ke frame mein chalega.</div>`
+    : `<div class="phone"><iframe src="${GAME_URL}" title="TradeVerse player view" loading="lazy"></iframe></div>`;
+}
+function renderAll(){ banner(); renderOverview(); renderPlayers(); }
+
+function go(v){ $$(".tab").forEach(t=>t.setAttribute("aria-selected", String(t.dataset.v===v))); ["overview","players","game","connect"].forEach(k=>$("#v-"+k).hidden = k!==v); if(v==="game" && !$("#gameBox").innerHTML) renderGame(); window.scrollTo(0,0); }
+$$(".tab").forEach(t=>t.onclick=()=>go(t.dataset.v));
+$$("[data-go]").forEach(x=>x.onclick=()=>go(x.dataset.go));
+
+async function loadLive(){
+  const url=$("#cUrl").value.trim(), key=$("#cKey").value;
+  const msg=t=>{ $("#cMsg").textContent=t; };
+  if(!/^https:\/\/script\.google(usercontent)?\.com\//.test(url)) return msg("URL https://script.google.com/macros/s/.../exec jaisa hona chahiye.");
+  if(!key) return msg("Admin key likho.");
+  if(IN_PREVIEW) return msg("Ye preview link bahar se data nahi la sakta. Yehi page GitHub Pages par kholo, wahan live data aayega.");
+  msg("Data aa raha hai...");
+  try{ const r=await fetch(url+(url.includes("?")?"&":"?")+"key="+encodeURIComponent(key)); const j=await r.json();
+    if(!j.ok) return msg(j.error==="wrong key"? "Key ghalat hai, ya apps-script.gs mein ADMIN_KEY abhi badli nahi." : "Sheet se jawab theek nahi aaya.");
+    store.set("url",url); store.set("key",key); setData(j.players||[], "live"); msg(`${(j.players||[]).length} players aa gaye.`); go("overview");
+  }catch(e){ msg("Sheet tak nahi pohnch sake. URL check karo aur internet dekho."); }
+}
+$("#cfg").addEventListener("submit",e=>{ e.preventDefault(); loadLive(); });
+$("#cSample").onclick=()=>{ setData(sample(),"sample"); go("overview"); };
+
+/* ===== PIN gate ===== */
+async function sha(t){ const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+function unlock(){ $("#gateView").hidden=true; $("#app").hidden=false;
+  $("#cUrl").value=store.get("url")||""; $("#cKey").value=store.get("key")||"";
+  setData(sample(),"sample"); if(!IN_PREVIEW && store.get("url") && store.get("key")) loadLive(); }
+$("#gateForm").addEventListener("submit", async e=>{ e.preventDefault();
+  let ok=false; try{ ok=(await sha("sukoon-admin:"+$("#pin").value))===PIN_HASH; }catch(err){ ok=false; }
+  if(ok){ try{ sessionStorage.setItem("sm-admin-ok","1"); }catch(e){} unlock(); } else { $("#pinErr").hidden=false; $("#pin").value=""; $("#pin").focus(); } });
+try{ if(sessionStorage.getItem("sm-admin-ok")==="1") unlock(); }catch(e){}
+</script>
