@@ -34,5 +34,35 @@
     }
   ],
   "id": "./",
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "screenshots": [
+    {
+      "src": "screenshots/home.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Home: quests and XP rank"
+    },
+    {
+      "src": "screenshots/lessons.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Lessons for every stage"
+    },
+    {
+      "src": "screenshots/lesson.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Forex course with diagrams"
+    },
+    {
+      "src": "screenshots/demo.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Demo account with real pairs"
+    }
+  ]
 }
