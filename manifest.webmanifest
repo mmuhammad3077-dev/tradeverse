@@ -1,18 +1,38 @@
 {
   "name": "TradeVerse: Your World. Your Trading Journey.",
   "short_name": "TradeVerse",
-  "description": "Mindful trading seekhne ka game. Stages, chart puzzles, demo account. Asli paisa nahi.",
+  "description": "TradeVerse: a mindful trading adventure. Learn forex and crypto with real historical charts, quests and a demo account. Virtual money only.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#E9EFEC",
-  "theme_color": "#2F7D6D",
+  "background_color": "#0B1220",
+  "theme_color": "#0B1220",
   "lang": "ur-Latn",
-  "categories": ["education", "games", "finance"],
+  "categories": [
+    "education",
+    "games"
+  ],
   "icons": [
-    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
-    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
-    {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
-  ]
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "./",
+  "prefer_related_applications": false
 }

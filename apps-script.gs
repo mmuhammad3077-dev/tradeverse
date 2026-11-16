@@ -26,6 +26,8 @@ function doPost(e) {
   try {
     var d = JSON.parse(e.postData.contents);
     if (!d.email) return ContentService.createTextOutput('no email');
+    if (d.action === 'delete_request') return deletePlayer_(d);
+    if (d.action === 'contact') return logRequest_('contact', d.email, d.note, d.source);
     var t = sheet_(), sh = t.sh, cols = t.cols;
     var email = String(d.email).trim().toLowerCase();
     var emails = sh.getLastRow() > 1 ? sh.getRange(2, cols.indexOf('Email') + 1, sh.getLastRow() - 1, 1).getValues() : [];
@@ -40,6 +42,24 @@ function doPost(e) {
     else Object.keys(vals).forEach(function (k) { var c = cols.indexOf(k); if (c >= 0 && vals[k] !== undefined && vals[k] !== null) sh.getRange(row, c + 1).setValue(vals[k]); });
     return ContentService.createTextOutput('ok');
   } finally { lock.releaseLock(); }
+}
+
+// Data deletion (Play Store requirement): removes the player's row(s). The log keeps only time, source
+// and how many rows were removed, never the email, so nothing personal stays behind.
+function deletePlayer_(d) {
+  var t = sheet_(), sh = t.sh, cols = t.cols, email = String(d.email).trim().toLowerCase(), removed = 0;
+  if (sh.getLastRow() > 1) {
+    var emails = sh.getRange(2, cols.indexOf('Email') + 1, sh.getLastRow() - 1, 1).getValues();
+    for (var i = emails.length - 1; i >= 0; i--) if (String(emails[i][0]).trim().toLowerCase() === email) { sh.deleteRow(i + 2); removed++; }
+  }
+  logRequest_('delete', '', 'rows removed: ' + removed, d.source);
+  return ContentService.createTextOutput('deleted');
+}
+function logRequest_(type, email, note, source) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet(), sh = ss.getSheetByName('Requests') || ss.insertSheet('Requests');
+  if (sh.getLastRow() === 0) sh.appendRow(['Time', 'Type', 'Email', 'Note', 'Source']);
+  sh.appendRow([new Date(), type, email || '', String(note || '').slice(0, 500), source || '']);
+  return ContentService.createTextOutput('ok');
 }
 
 // admin.html reads the list here. The key is checked on Google's server, so the list stays private.

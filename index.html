@@ -1332,17 +1332,15 @@ function profileSheet(){
       <label class="fld"><span>${L("Naam","Name")}</span><input id="pfName" required autocomplete="name" value="${esc(p.name||"")}"></label>
       <label class="fld"><span>${L("Email (Gmail)","Email (Gmail)")}</span><input id="pfEmail" type="email" required autocomplete="email" inputmode="email" value="${esc(p.email||"")}"></label>
       <label class="fld"><span>${L("Contact number (WhatsApp)","Contact number (WhatsApp)")}</span><input id="pfPhone" type="tel" required autocomplete="tel" inputmode="tel" placeholder="03xx xxxxxxx" value="${esc(p.phone||"")}"></label>
-      <label class="fld"><span>${L("Umar (saal)","Age (years)")}</span><input id="pfAge" type="number" min="6" max="100" required inputmode="numeric" value="${esc(p.age||"")}"></label>
+      <label class="fld"><span>${L("Umar (saal)","Age (years)")}</span><input id="pfAge" type="number" min="13" max="100" required inputmode="numeric" value="${esc(p.age||"")}"></label>
       <fieldset class="fld"><span>${L("Trading ka tajurba?","Trading experience?")}</span>
         <div class="stack" style="gap:6px">${EXP.map(e=>`<label class="radio"><input type="radio" name="pfExp" value="${e.id}" ${p.exp===e.id?"checked":""}> ${L(e.ur,e.en)}</label>`).join("")}</div></fieldset>
-      <label class="radio" id="pfKidRow" hidden><input type="checkbox" id="pfKid"> ${L("Mere walidain ya sarparast ne ijazat di hai","My parent or guardian has given permission")}</label>
       <label class="radio"><input type="checkbox" id="pfOk"> ${L("Main ijazat deta/deti hoon ke meri ye maloomat game ke banane wale ke paas mehfooz rahe aur sirf game behtar banane aur raabta karne ke liye istemal ho.","I agree that this information is kept safely by the game maker and used only to improve the game and to contact me.")}</label>
+      <p class="muted" style="font-size:12px;margin:0"><a href="privacy.html" target="_blank" rel="noopener" style="color:var(--accent)">${L("Privacy policy parho","Read the privacy policy")}</a></p>
       <p class="muted" id="pfErr" style="color:var(--down);font-size:14px" hidden></p>
       <button class="btn primary block" type="submit" style="min-height:52px">${L("Player card banao","Create player card")}</button>
     </form>`);
-  const age=$("#pfAge"), kidRow=$("#pfKidRow");
-  const syncKid=()=>{ kidRow.hidden = !(+age.value>0 && +age.value<13); };
-  age.addEventListener("input", syncKid); syncKid();
+  const age=$("#pfAge");
   $("#pf").addEventListener("submit", e=>{
     e.preventDefault();
     const name=$("#pfName").value.trim(), email=$("#pfEmail").value.trim(), phone=$("#pfPhone").value.trim(), a=+age.value;
@@ -1350,9 +1348,9 @@ function profileSheet(){
     const err = !name? L("Apna naam likho.","Please enter your name.")
       : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)? L("Email sahi likho, jaise naam@gmail.com","Enter a valid email, like name@gmail.com")
       : phone.replace(/\D/g,"").length<10? L("Contact number poora likho (kam az kam 10 hindse).","Enter a full contact number (at least 10 digits).")
-      : !(a>=6 && a<=100)? L("Umar 6 se 100 ke beech likho.","Enter an age between 6 and 100.")
+      : (a>0 && a<13)? L("TradeVerse 13 saal ya us se bari umar ke liye hai. Aapki maloomat kahin nahi bheji gayi.","TradeVerse is for ages 13 and up. Nothing you typed has been sent.")
+      : !(a>=13 && a<=100)? L("Umar sahi likho (13 se 100).","Enter a valid age (13 to 100).")
       : !exp? L("Trading ka tajurba chuno.","Choose your trading experience.")
-      : (a<13 && !$("#pfKid").checked)? L("13 saal se kam umar ke liye walidain ki ijazat zaroori hai.","Players under 13 need a parent's permission.")
       : !$("#pfOk").checked? L("Aage barhne ke liye ijazat wala box tick karo.","Tick the consent box to continue.") : "";
     if(err){ const el=$("#pfErr"); el.textContent=err; el.hidden=false; return; }
     const first=!S.profile;
@@ -1394,7 +1392,10 @@ function settingsSheet(){
       <button class="btn ghost block" id="sProf">${L("Player card badlo","Edit player card")}</button></div>
     <div class="stack" style="gap:6px"><span class="label">${L("Awaaz","Sound")}</span>
       <div class="row"><button class="btn ${!S.mute?"primary":"ghost"}" id="sMute" style="flex:1">${L("Effects","Effects")}: ${S.mute?"Off":"On"}</button><button class="btn ${S.music?"primary":"ghost"}" id="sMusic" style="flex:1">${L("Music","Music")}: ${S.music?"On":"Off"}</button></div></div>
-    <button class="btn ghost block" id="sHow">${L("Kaise khelein?","How to play?")}</button>`);
+    <button class="btn ghost block" id="sHow">${L("Kaise khelein?","How to play?")}</button>
+    <div class="stack" style="gap:6px"><span class="label">${L("Privacy","Privacy")}</span>
+      <a class="btn ghost block" href="privacy.html" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">${L("Privacy policy","Privacy policy")}</a>
+      <div id="sDelBox"><button class="btn ghost block" id="sDel" style="color:var(--down)">${L("Mera data delete karo","Delete my data")}</button></div></div>`);
   $("#x").onclick=closeSheet;
   $("#sUr").onclick=()=>{ if(S.lang!=="ur") setLang("ur"); };
   $("#sEn").onclick=()=>{ if(S.lang!=="en") setLang("en"); };
@@ -1405,6 +1406,12 @@ function settingsSheet(){
   $("#sMusic").onclick=()=>{ setMusic(!S.music); settingsSheet(); };
   $("#sHow").onclick=()=>howto(false);
   $("#sTrack").onclick=()=>trackSheet(settingsSheet);
+  $("#sDel").onclick=()=>{ $("#sDelBox").innerHTML=`<p style="font-size:14px">${L("Aapka player card aur saari progress hamari sheet se mita di jayegi, aur is phone se game ka save bhi. Ye wapas nahi hoga. Pakka?","Your player card and all progress will be removed from our sheet, and the game save on this phone will be erased. This can't be undone. Sure?")}</p><div class="row"><button class="btn ghost" id="dN" style="flex:1">${L("Nahi","No")}</button><button class="btn down" id="dY" style="flex:1">${L("Haan, delete","Yes, delete")}</button></div>`;
+    $("#dN").onclick=settingsSheet;
+    $("#dY").onclick=()=>{ const email=S.profile&&S.profile.email;
+      const wipe=()=>{ try{ localStorage.removeItem(KEY); }catch(e){} location.reload(); };
+      if(email && SIGNUP_URL){ try{ fetch(SIGNUP_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"delete_request",email,source:"app"})}).then(wipe,wipe); }catch(e){ wipe(); } setTimeout(wipe,4000); }
+      else wipe(); }; };
 }
 function afterPlacement(){ if(!S.char.made) return charSheet(true, afterPlacement); if(!S.track) return trackSheet(afterPlacement); if(!S.seenIntro) howto(true); else nextAction().run(); }
 function boot(){
