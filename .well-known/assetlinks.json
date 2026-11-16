@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.algoalitrader.game.twa",
+      "sha256_cert_fingerprints": [
+        "15:0B:F4:58:B2:0D:6D:8E:C7:3A:92:95:1D:94:7E:F1:1F:3F:BD:96:89:DE:BC:10:12:4F:93:DE:CA:CD:5C:27"
+      ]
+    }
+  }
+]
