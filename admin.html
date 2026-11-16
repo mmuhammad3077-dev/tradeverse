@@ -194,6 +194,7 @@ tbody tr:last-child td{border-bottom:none}
 /* ===== config ===== */
 // PIN check: sha256("sukoon-admin:" + PIN). Default PIN 2580. To change it, see README.md.
 const PIN_HASH = "5669e789002f3ec97ac72e7f9df2b9cafe4ca938c6691f72721b110b6bfef3d7";
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbwbIEUaZV0Le6o4LGmP_0Vlkf7ypAvzWDJs7BeAk8HTuqU9eB4HBiuIFBUMIGY2Ra2G/exec";
 const GAME_URL = "index.html";                                     // the hosted game, next to this file
 const PREVIEW_GAME = "https://claude.ai/artifact/8qf6bkFZC5dkuaSN8szRiD"; // game preview link
 const RANKS = [["Rookie",0],["Apprentice",300],["Trader",900],["Pro",2000],["Master",4000],["Legend",7000]];
@@ -338,7 +339,7 @@ $("#cSample").onclick=()=>{ setData(sample(),"sample"); go("overview"); };
 /* ===== PIN gate ===== */
 async function sha(t){ const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
 function unlock(){ $("#gateView").hidden=true; $("#app").hidden=false;
-  $("#cUrl").value=store.get("url")||""; $("#cKey").value=store.get("key")||"";
+  $("#cUrl").value=store.get("url")||SHEET_URL; $("#cKey").value=store.get("key")||"";
   setData(sample(),"sample"); if(!IN_PREVIEW && store.get("url") && store.get("key")) loadLive(); }
 $("#gateForm").addEventListener("submit", async e=>{ e.preventDefault();
   let ok=false; try{ ok=(await sha("sukoon-admin:"+$("#pin").value))===PIN_HASH; }catch(err){ ok=false; }
