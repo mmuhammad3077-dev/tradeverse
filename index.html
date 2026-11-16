@@ -910,12 +910,27 @@ const ri = (a,b)=> a+Math.floor(Math.random()*(b-a+1));
    S.mute = sound effects off. S.music = background music on (off by default; browsers only allow
    audio after the player taps, so music starts on the first tap after it is switched on). */
 let AC=null, SFXBUS=null, MUSBUS=null;
+/* Mobile unlock: phones only allow audio inside a real tap (pointerup/touchend/click, not pointerdown).
+   iPhone also mutes Web Audio on the silent switch unless an <audio> element is playing, so a silent
+   looping <audio> keeps the "playback" audio session while sound is wanted. */
+let UNLOCKED=false, KEEP=null;
+const SILENT_WAV="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+function unlockAudio(){
+  try{
+    if(navigator.audioSession) navigator.audioSession.type="playback";
+    audioCtx();
+    if(AC.state!=="running") AC.resume();
+    if(!UNLOCKED){ const b=AC.createBuffer(1,1,22050), src=AC.createBufferSource(); src.buffer=b; src.connect(AC.destination); src.start(0); UNLOCKED=true; }
+    if(!KEEP){ KEEP=new Audio(SILENT_WAV); KEEP.loop=true; KEEP.setAttribute("playsinline",""); KEEP.volume=0.01; }
+    if((S.music||!S.mute) && KEEP.paused){ const pr=KEEP.play(); if(pr&&pr.catch) pr.catch(()=>{}); }
+  }catch(e){}
+}
 function audioCtx(){
   if(!AC){ AC = new (window.AudioContext||window.webkitAudioContext)();
     const comp=AC.createDynamicsCompressor(); comp.threshold.value=-18; comp.ratio.value=3; comp.connect(AC.destination);
     SFXBUS=AC.createGain(); SFXBUS.gain.value=.9; SFXBUS.connect(comp);
     MUSBUS=AC.createGain(); MUSBUS.gain.value=0; MUSBUS.connect(comp); }
-  if(AC.state==="suspended") AC.resume();
+  if(AC.state!=="running" && AC.state!=="closed"){ try{ AC.resume(); }catch(e){} }
   return AC;
 }
 function tone(f, t, d, o={}){
@@ -986,20 +1001,23 @@ function musicStop(fast){
 }
 function musicMood(m){ MUS.mood=m; }
 function musicDuck(on){ if(!AC||!MUS.on) return; try{ MUSBUS.gain.setTargetAtTime(on? .15 : .55, AC.currentTime, .4); }catch(e){} }
-function setMusic(v){ S.music=v; save(); if(v) musicStart(); else musicStop(); syncAudioBtns(); }
-function setSfx(on){ S.mute=!on; save(); if(on) sfx("ok"); syncAudioBtns(); }
+function setMusic(v){ S.music=v; save(); unlockAudio(); if(v) musicStart(); else musicStop(); syncAudioBtns(); }
+function setSfx(on){ S.mute=!on; save(); unlockAudio(); if(on) sfx("ok"); syncAudioBtns(); }
 function syncAudioBtns(){
   const m=$("#hMusic"), s=$("#hSfx");
   if(m){ m.classList.toggle("on", !!S.music); m.setAttribute("aria-pressed", !!S.music); m.title=S.music? L("Music band karo","Turn music off") : L("Music chalao","Turn music on"); }
   if(s){ s.classList.toggle("on", !S.mute); s.setAttribute("aria-pressed", !S.mute); s.title=S.mute? L("Awaaz on karo","Turn sound on") : L("Awaaz band karo","Turn sound off"); }
   const pm=$("#pMute"); if(pm) pm.textContent = S.mute? "Awaaz band":"Awaaz on";
 }
-document.addEventListener("pointerdown", e=>{
-  if(S.music && !MUS.on) musicStart();
+["pointerup","touchend","click","keydown"].forEach(ev=>document.addEventListener(ev, ()=>{
+  if(!S.music && S.mute) return;
+  unlockAudio(); if(S.music && !MUS.on) musicStart();
+}, {passive:true, capture:true}));
+document.addEventListener("click", e=>{
   const b=e.target.closest && e.target.closest(".btn,.chip,.opt,.lesson-item,.node");
   if(b && !b.disabled && !b.matches("#hSfx,#hMusic")) sfx("tap");
-}, {passive:true});
-document.addEventListener("visibilitychange", ()=>{ if(document.hidden) musicStop(true); else if(S.music) musicStart(); });
+}, true);
+document.addEventListener("visibilitychange", ()=>{ if(document.hidden){ musicStop(true); if(KEEP) KEEP.pause(); } else if(S.music) musicStart(); });
 function buzz(ms){ try{ navigator.vibrate && navigator.vibrate(ms); }catch(e){} }
 function confetti(){
   if(matchMedia("(prefers-reduced-motion: reduce)").matches) return;
