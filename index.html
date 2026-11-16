@@ -235,6 +235,7 @@ canvas#chart{display:block;width:100%;height:290px;touch-action:pan-y}
 .abtn{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
 .abtn svg{width:17px;height:17px}.abtn .x{display:inline}.abtn.on .x{display:none}
 .abtn.on{color:var(--accent);border-color:color-mix(in srgb, var(--accent) 50%, transparent);background:color-mix(in srgb, var(--accent) 10%, transparent)}
+.fxd{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:8px 6px;margin:10px -6px}.fxd svg{width:100%;height:auto;display:block}.fxd text{font-size:12px}.fxcap{color:var(--muted);font-size:12px;line-height:1.4;text-align:center;margin-top:4px}
 .coinpill i{width:10px;height:10px;border-radius:50%;background:var(--gold);box-shadow:inset 0 0 0 2px color-mix(in srgb, #000 18%, transparent)}
 .coinpill b{font-family:var(--font-mono);font-weight:500}
 .village{position:relative;height:330px;border-radius:var(--r) var(--r) 0 0;overflow:hidden;background:#0B1220}
@@ -678,7 +679,7 @@ function todayKey(){ const d=new Date(); return d.getFullYear()+"-"+(d.getMonth(
 function stageDef(){ return S.stage<FIXED? STAGES[S.stage] : genStage(S.stage); }
 function sp(k){ return S.sp[k]||0; }
 function spAdd(k,n){ S.sp[k]=(S.sp[k]||0)+n; }
-function lessonOpen(l){ return l.st<=S.stage; }
+function lessonOpen(l){ if(l.mod) return courseOpen(l); return l.st<=S.stage || !!S.tester; }
 
 function ensureChallenge(){
   const k=todayKey(), puzzleStage = stageDef().mode==="quest";
@@ -851,6 +852,7 @@ function candleAnim(green){
   else animTimer=setInterval(frame, 140);
 }
 function lessonBlock(p){
+  { const fx=fxBlock(p); if(fx!=null) return fx; }
   if(p==="@anim") return `<div class="anim" id="animBox"><svg id="animSvg" viewBox="0 0 120 180" aria-label="Candle ban rahi hai"></svg><div class="live" id="animLive"></div></div>
     <div class="row" style="margin-top:8px"><button class="btn ghost" id="aG" style="flex:1;min-height:40px">Hari candle banao</button><button class="btn ghost" id="aR" style="flex:1;min-height:40px">Laal candle banao</button></div>`;
   if(p==="@gallery") return `<div class="gallery">${Object.keys(CTYPES).map(k=>`<div>${candlesSVG(CTYPES[k].c.map(toC),{w:120,h:110,maxW:22})}<b>${CTYPES[k].name}</b><small>${CTYPES[k].sig}</small></div>`).join("")}</div>`;
@@ -1258,7 +1260,7 @@ function lose(reason){
 
 /* ================== LANGUAGE (Roman Urdu source text, English via dictionary) ================== */
 const L = (ur, en)=> S.lang==="en"? en : ur;
-addMarketLessons();
+addMarketLessons(); addForexCourse();
 const lessonShown = l => !l.k || !S.track || S.track==="both" || l.k===S.track;
 const NUMRE = /[-+]?\$?\d[\d,]*(?:\.\d+)?%?/g;
 function trText(t){
@@ -1644,6 +1646,271 @@ function addMarketLessons(){
   );
 }
 
+/* ================== FOREX COURSE: 5 modules, Basics -> Analysis -> Technical -> SMC/ICT/Volume -> Plan ==================
+   Lessons carry `mod`. A module opens when every lesson of the previous module is done (tester mode opens all).
+   Each module ends with a boss test (6 random questions from that module, 5 needed). */
+const FX_MODS = [
+  {n:1, ur:"Forex ki buniyad", en:"Forex foundations"},
+  {n:2, ur:"Analysis ki qismein", en:"Types of analysis"},
+  {n:3, ur:"Technical analysis aur price action", en:"Technical analysis and price action"},
+  {n:4, ur:"Smart Money: SMC, ICT aur Volume", en:"Smart money: SMC, ICT and volume"},
+  {n:5, ur:"Trading plan, backtest aur nafsiyat", en:"Trading plan, backtesting and psychology"}
+];
+/* ---- small chart diagrams for lessons. spec: pts (zigzag pivots) or c (explicit [o,h,l,c]) plus overlays ---- */
+function fxCandles(sp){
+  if(sp.c) return sp.c.map(toC);
+  const per=sp.per||3, out=[]; let p=sp.pts[0];
+  for(let k=1;k<sp.pts.length;k++){ const a=sp.pts[k-1], b=sp.pts[k];
+    for(let j=1;j<=per;j++){ const c=a+(b-a)*j/per, o=p, w=Math.abs(b-a)/per*.35+.8; out.push({o, c, h:Math.max(o,c)+w, l:Math.min(o,c)-w}); p=c; } }
+  return out;
+}
+function fxSVG(sp){
+  const cs=fxCandles(sp), W=320, H=sp.h||176, padL=8, padR=sp.profile? 76 : 74, n=cs.length;
+  let lo=Math.min(...cs.map(c=>c.l)), hi=Math.max(...cs.map(c=>c.h));
+  (sp.zones||[]).forEach(z=>{ lo=Math.min(lo,z.y1); hi=Math.max(hi,z.y2); }); (sp.lines||[]).forEach(l=>{ lo=Math.min(lo,l.y); hi=Math.max(hi,l.y); });
+  const pd=(hi-lo)*.08; lo-=pd; hi+=pd;
+  const Y=v=>10+(hi-v)/(hi-lo)*(H-20), step=(W-padL-padR)/n, X=i=>padL+i*step+step/2, cw=Math.min(step*.62,14);
+  const col=k=>({up:"var(--up)",dn:"var(--down)",gold:"var(--gold)",blue:"var(--accent)",mut:"var(--muted)"}[k]||k||"var(--gold)");
+  let g="";
+  (sp.zones||[]).forEach(z=>{ const x1=z.from!=null? X(z.from)-cw/2-2 : padL, x2=z.to!=null? X(z.to)+cw/2+2 : W-padR+4;
+    g+=`<rect x="${x1}" y="${Y(z.y2)}" width="${x2-x1}" height="${Y(z.y1)-Y(z.y2)}" fill="${col(z.col)}" fill-opacity=".16" stroke="${col(z.col)}" stroke-opacity=".55" stroke-dasharray="3 3"/>`;
+    if(z.t) g+=`<text x="${x2+3}" y="${(Y(z.y1)+Y(z.y2))/2+4}" font-size="10" fill="${col(z.col)}" font-family="var(--font-mono)">${z.t}</text>`; });
+  (sp.lines||[]).forEach(l=>{ g+=`<line x1="${l.from!=null?X(l.from):padL}" x2="${W-padR+4}" y1="${Y(l.y)}" y2="${Y(l.y)}" stroke="${col(l.col)}" stroke-width="1.3" ${l.dash===false?"":'stroke-dasharray="5 4"'}/>`;
+    if(l.t) g+=`<text x="${W-padR+7}" y="${Y(l.y)+4}" font-size="10" fill="${col(l.col)}" font-family="var(--font-mono)">${l.t}</text>`; });
+  cs.forEach((c,i)=>{ const cl=c.c>=c.o?"var(--up)":"var(--down)", y1=Y(Math.max(c.o,c.c)), y2=Y(Math.min(c.o,c.c));
+    g+=`<line x1="${X(i)}" x2="${X(i)}" y1="${Y(c.h)}" y2="${Y(c.l)}" stroke="${cl}" stroke-width="1.3"/><rect x="${X(i)-cw/2}" y="${y1}" width="${cw}" height="${Math.max(1.4,y2-y1)}" rx="1.5" fill="${cl}"/>`; });
+  (sp.marks||[]).forEach(([i,t,pos])=>{ const c=cs[i], up=pos!=="low", y=up? Y(c.h)-6 : Y(c.l)+14;
+    g+=`<text x="${X(i)}" y="${y}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--ink)" font-family="var(--font-mono)">${t}</text>`; });
+  if(sp.profile){ const mx=Math.max(...sp.profile.map(p=>p[1])), x0=W-padR+6;
+    sp.profile.forEach(([v,s,poc])=>{ g+=`<rect x="${x0}" y="${Y(v)-4}" width="${s/mx*48}" height="8" rx="2" fill="${poc?"var(--gold)":"var(--accent)"}" fill-opacity="${poc?.9:.45}"/>`; }); }
+  if(sp.vol){ const mx=Math.max(...sp.vol); sp.vol.forEach((v,i)=>{ const hh=v/mx*26; g+=`<rect x="${X(i)-cw/2}" y="${H-hh}" width="${cw}" height="${hh}" fill="var(--muted)" fill-opacity=".45"/>`; }); }
+  return `<div class="fxd"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${sp.cap||"chart"}">${g}</svg>${sp.cap?`<div class="fxcap">${sp.cap}</div>`:""}</div>`;
+}
+const FXD = {
+  struct: ()=>fxSVG({pts:[20,40,30,55,45,70,58,82,50], per:3, marks:[[5,"HL","low"],[8,"HH"],[11,"HL","low"],[14,"HH"],[17,"HL","low"],[20,"HH"]], lines:[{y:58,t:"CHoCH",col:"dn",from:17}], cap:L("Upar: HH aur HL = uptrend. Aakhri HL toota: CHoCH (mood badla)","Up: HH and HL = uptrend. Last HL broken: CHoCH (character change)")}),
+  sr: ()=>fxSVG({pts:[30,68,36,69,34,70,52,86,71,92], per:3, zones:[{y1:66,y2:71,col:"gold",t:"S/R"}], cap:L("Resistance toota, phir wahi zone support bana (role reversal)","Resistance broke, then the same zone became support (role reversal)")}),
+  dtop: ()=>fxSVG({pts:[20,70,50,70,42,49,28], per:3, lines:[{y:50,t:L("Neckline","Neckline"),col:"dn"}], marks:[[5,"1"],[11,"2"]], cap:L("Double top: do baar 70 par ruka, neckline tooti","Double top: rejected twice at 70, neckline broke")}),
+  hs: ()=>fxSVG({pts:[20,58,44,76,45,59,30], per:3, lines:[{y:44.5,t:"Neckline",col:"dn"}], marks:[[5,"L"],[11,"H"],[17,"R"]], cap:L("Head and shoulders: L (shoulder), H (head), R (shoulder)","Head and shoulders: left shoulder, head, right shoulder")}),
+  fib: ()=>fxSVG({pts:[20,80,43,74], per:4, lines:[{y:57.1,t:"38.2%",col:"mut"},{y:50,t:"50%",col:"mut"},{y:42.9,t:"61.8%",col:"gold"}], cap:L("20 se 80 ka move, 61.8% tak wapas aa kar phir upar","Move from 20 to 80, pulled back to 61.8%, then up")}),
+  fvg: ()=>fxSVG({c:[[38,40,36,39],[39,42,38,41],[41,44,40,43],[43,45,42,44.5],[44.5,62,44,61],[61,66,57,64],[64,67,60,62],[62,63,55,56],[56,57,49,51],[51,66,50,65],[65,74,64,73]], zones:[{from:3,y1:45,y2:57,col:"blue",t:"FVG"}], marks:[[3,"1"],[4,"2"],[5,"3"]], cap:L("Candle 1 ka High (45) aur candle 3 ka Low (57) nahi mile: beech ka khaali hissa FVG","Candle 1 high (45) and candle 3 low (57) don't overlap: the gap is the FVG")}),
+  ob: ()=>fxSVG({c:[[60,61,54,55],[55,56,49,50],[50,52,44,46],[46,58,45,57],[57,68,56,67],[67,75,65,74],[74,75,66,68],[68,69,58,60],[60,61,51,53],[53,64,50,63],[63,78,62,77]], zones:[{from:2,y1:44,y2:52,col:"up",t:"OB"}], lines:[{y:61,t:"BOS",col:"mut",from:0}], cap:L("Tez move se pehle ki aakhri laal candle = bullish order block","Last down candle before the strong move = bullish order block")}),
+  sweep: ()=>fxSVG({c:[[52,58,51,57],[57,70,56,66],[66,67,58,60],[60,70.1,59,65],[65,66,57,59],[59,70,58,68],[68,77,67,68.5],[68.5,69,60,61],[61,62,52,53],[53,54,44,46]], lines:[{y:70,t:"EQH",col:"gold"}], marks:[[6,L("Sweep","Sweep")]], cap:L("Sab ke stops 70 ke upar thay. Qeemat ne unhein le kar (sweep) neeche ka rukh kiya","Stops sat above 70. Price took them (sweep), then reversed down")}),
+  pd: ()=>fxSVG({pts:[20,80,38,72], per:4, zones:[{y1:50,y2:80,col:"dn",t:"Premium"},{y1:20,y2:50,col:"up"},{y1:32.6,y2:42.8,col:"gold",t:"OTE"}], lines:[{y:50,t:"50%",col:"mut"}], cap:L("Range ka 50% (equilibrium) se upar Premium, neeche Discount. OTE = 62% se 79%","Above the range's 50% (equilibrium) is premium, below is discount. OTE = 62% to 79%")}),
+  vp: ()=>fxSVG({pts:[40,56,44,58,47,55,45,57,50], per:3, profile:[[42,2],[44,4],[46,6],[48,8],[50,11],[52,14,1],[54,9],[56,5],[58,2]], lines:[{y:52,t:"POC",col:"gold"}], cap:L("Daayein: har qeemat par kitna volume hua. Sab se lamba = POC","Right: volume traded at each price. Longest bar = POC")}),
+  vol: ()=>fxSVG({pts:[30,45,40,60,55,78,72,80,70], per:3, vol:[3,3,4,5,4,4,4,6,7,4,4,5,7,8,9,5,4,5,4,3,3,6,8,9], cap:L("Breakout par volume barha = taqat. Aakhri chadhai par volume kam = kamzori","Volume rose on the breakout = strength. Weak volume on the last push = weakness")})
+};
+function fxBlock(p){ if(typeof p==="string" && p.startsWith("@fx:")){ const f=FXD[p.slice(4)]; return f? f() : ""; } return null; }
+
+function addForexCourse(){
+  const mk=(id,mod,t,body,quiz)=>({id, k:"fx", st:0, mod, get title(){ return t(); }, get body(){ return body(); }, get quiz(){ return quiz(); }});
+  const Q=(q,o,a,w)=>({q,o,a,w});
+  LESSONS.push(
+  /* ---------- Module 1: foundations ---------- */
+  mk("fxA",1,()=>L("Forex market kaise kaam karta hai","How the forex market works"),()=>[
+    L("Forex (FX) currencies ke tabadle ka bazaar hai. Ye duniya ka sab se bara market hai: rozana kai <b>trillion dollar</b> ka len den.","Forex (FX) is the market for exchanging currencies. It is the biggest market in the world: several <b>trillion dollars</b> trade every day."),
+    L("Iski koi ek building ya exchange nahi. Ye <b>OTC (over the counter)</b> hai: banks aapas mein electronic network par trade karte hain.","There is no single building or exchange. It is <b>OTC (over the counter)</b>: banks trade with each other over electronic networks."),
+    L("Khiladi: <b>central banks</b> (State Bank, Fed, ECB), bare <b>banks</b>, hedge funds, companies (import/export), aur aakhir mein <b>retail traders</b> jo broker ke zariye aate hain.","Players: <b>central banks</b> (Fed, ECB, State Bank), big <b>banks</b>, hedge funds, companies (import/export), and finally <b>retail traders</b> who come in through a broker."),
+    L("Broker aapko do qeematein dikhata hai: <b>Bid</b> (jis par aap bechte ho) aur <b>Ask</b> (jis par khareedte ho). Farq = spread.","A broker shows you two prices: <b>bid</b> (where you sell) and <b>ask</b> (where you buy). The gap is the spread."),
+    L("Ustaad Ullu: market ko koi ek banda control nahi karta. Lekin bare players ka paisa qeemat hilata hai, is liye unke qadmon ke nishaan chart par dhoondo.","Ustaad Ullu: no single person controls this market. But big players' money moves price, so look for their footprints on the chart.")],
+    ()=>[Q(L("Forex kis tarah ka market hai?","What kind of market is forex?"),[L("OTC, decentralized","OTC, decentralized"),L("Ek hi exchange","One single exchange"),L("Sirf banks ke liye band","Closed to everyone but banks")],0,L("Banks ke network par chalta hai, koi central exchange nahi.","It runs on bank networks, with no central exchange.")),
+         Q(L("Aap Buy kis qeemat par karte ho?","Which price do you buy at?"),["Ask","Bid",L("Close","Close")],0,L("Buy = Ask, Sell = Bid.","Buy = ask, sell = bid."))]),
+  mk("fxB",1,()=>L("Order ki qismein","Order types"),()=>[
+    L("<b>Market order</b>: abhi isi qeemat par. Tez, lekin khabar ke waqt <b>slippage</b> ho sakti hai (thori behtar ya buri qeemat).","<b>Market order</b>: right now at the current price. Fast, but in news you can get <b>slippage</b> (a slightly different price)."),
+    L("<b>Pending orders</b>: <b>Buy Limit</b> = neeche se khareedo (qeemat ke wapas aane par). <b>Sell Limit</b> = upar se becho. <b>Buy Stop</b> = upar breakout par khareedo. <b>Sell Stop</b> = neeche breakdown par becho.","<b>Pending orders</b>: <b>buy limit</b> = buy lower (on a pullback). <b>Sell limit</b> = sell higher. <b>Buy stop</b> = buy above, on a breakout. <b>Sell stop</b> = sell below, on a breakdown."),
+    L("<b>Stop Loss</b> aur <b>Take Profit</b> har trade ke saath. Stop pehle socho, phir entry.","<b>Stop loss</b> and <b>take profit</b> with every trade. Decide the stop first, then the entry."),
+    L("Yaad rakhne ka tareeqa: <b>Limit = behtar qeemat ka intezar</b>, <b>Stop = qeemat ke peeche chalna</b>.","Memory trick: <b>limit = wait for a better price</b>, <b>stop = follow price through a level</b>.")],
+    ()=>[Q(L("EUR/USD 1.1000 par hai. Aap 1.0950 par wapsi par khareedna chahte ho. Kaun sa order?","EUR/USD is at 1.1000. You want to buy a pullback at 1.0950. Which order?"),["Buy Limit","Buy Stop","Sell Stop"],0,L("Mojooda qeemat se neeche khareedna = Buy Limit.","Buying below the current price = buy limit.")),
+         Q(L("1.1050 ka breakout hone par khareedna hai. Order?","You want to buy only if 1.1050 breaks. Which order?"),["Buy Stop","Buy Limit","Sell Limit"],0,L("Upar breakout par khareedna = Buy Stop.","Buying above on a breakout = buy stop.")),
+         Q(L("Slippage kya hai?","What is slippage?"),[L("Socha kuch, fill kisi aur qeemat par","Filled at a different price than expected"),L("Broker ki fees","Broker commission"),L("Swap","Swap")],0,L("Tez market mein fill qeemat badal jati hai.","In fast markets the fill price moves."))]),
+  mk("fxC",1,()=>L("Swap, margin call aur stop out","Swap, margin call and stop out"),()=>[
+    L("<b>Swap (rollover)</b>: raat bhar trade khuli rakho to dono currencies ke interest rate ke farq ka len den hota hai. Kabhi milta hai, aksar kat-ta hai. Aam taur par Wednesday ko 3 din ka swap lagta hai (weekend ki wajah se).","<b>Swap (rollover)</b>: holding a trade overnight pays or charges the interest-rate difference of the two currencies. Usually Wednesday carries a triple swap (for the weekend)."),
+    L("<b>Equity</b> = balance + khuli trades ka P/L. <b>Used margin</b> = trades ke liye block raqam. <b>Margin level</b> = Equity ÷ Used margin × 100%.","<b>Equity</b> = balance + open P/L. <b>Used margin</b> = money locked for open trades. <b>Margin level</b> = equity ÷ used margin × 100%."),
+    L("Margin level girta hai to <b>margin call</b> (warning) aata hai, aur aur gire to broker <b>stop out</b> kar ke trades khud band kar deta hai. Levels broker ke hisaab se alag hain (jaise 100% aur 50%).","If margin level falls you get a <b>margin call</b> (warning); if it falls further the broker <b>stops you out</b> and closes trades. Levels vary by broker (for example 100% and 50%)."),
+    L("Ustaad Ullu: margin call ka matlab hai risk pehle hi had se zyada tha. 1% risk wale trader ko margin call ki fikar nahi hoti.","Ustaad Ullu: a margin call means risk was already too big. A trader risking 1% never worries about margin calls.")],
+    ()=>[Q(L("Margin level ka formula?","Margin level formula?"),[L("Equity ÷ Used margin × 100","Equity ÷ used margin × 100"),L("Balance × leverage","Balance × leverage"),L("Profit ÷ loss","Profit ÷ loss")],0,L("Equity ÷ Used margin × 100%.","Equity ÷ used margin × 100%.")),
+         Q(L("Stop out mein kya hota hai?","What happens at stop out?"),[L("Broker trades khud band karta hai","The broker closes your trades"),L("Bonus milta hai","You get a bonus"),L("Kuch nahi","Nothing")],0,L("Account bachane ke liye broker positions band karta hai.","The broker closes positions to protect the account."))]),
+  /* ---------- Module 2: analysis ---------- */
+  mk("an1",2,()=>L("Analysis ki 3 qismein","The 3 types of analysis"),()=>[
+    L("<b>Fundamental</b>: mulk ki ma'eeshat. Interest rate, mehngai (CPI), GDP, naukriyan. Jawab deta hai: <b>kyun</b> currency mazboot ya kamzor hogi.","<b>Fundamental</b>: the economy. Interest rates, inflation (CPI), GDP, jobs. It answers <b>why</b> a currency should strengthen or weaken."),
+    L("<b>Technical</b>: chart. Qeemat, structure, levels, patterns, indicators. Jawab deta hai: <b>kab aur kahan</b> entry, stop aur target.","<b>Technical</b>: the chart. Price, structure, levels, patterns, indicators. It answers <b>when and where</b>: entry, stop and target."),
+    L("<b>Sentiment</b>: log kya soch rahe hain. Risk-on/risk-off, COT report, retail positioning. Jawab deta hai: <b>bheer kidhar hai</b>.","<b>Sentiment</b>: what people think. Risk-on/risk-off, the COT report, retail positioning. It answers <b>where the crowd is</b>."),
+    L("Pro traders aksar fundamental/sentiment se <b>bias</b> (rukh) lete hain aur technical se <b>entry</b>.","Pros often take their <b>bias</b> from fundamentals/sentiment and their <b>entry</b> from technicals.")],
+    ()=>[Q(L("Entry aur stop kahan rakhna hai, ye kaunsa analysis batata hai?","Which analysis tells you where to enter and place the stop?"),["Technical","Fundamental","Sentiment"],0,L("Chart levels se entry/stop.","Chart levels give entry and stop.")),
+         Q(L("Interest rate ka faisla kis analysis mein aata hai?","Interest-rate decisions belong to which analysis?"),["Fundamental","Technical",L("Koi nahi","None")],0,L("Ma'eeshat = fundamental.","Economy = fundamental."))]),
+  mk("an2",2,()=>L("Fundamental: interest rate ka khel","Fundamentals: the interest-rate game"),()=>[
+    L("Currency ki sab se bari driver <b>interest rate</b> hai. Zyada rate = us currency mein paisa rakhne ka zyada faida = demand barhti hai.","The biggest currency driver is the <b>interest rate</b>. Higher rates = more reward for holding that currency = more demand."),
+    L("Market <b>umeed</b> par chalta hai. Agar sab ko rate barhne ki umeed thi aur barh gaya, to qeemat shayad na hile. Asal jhatka <b>surprise</b> par aata hai.","Markets trade <b>expectations</b>. If everyone expected a hike and it came, price may not move. The real move comes from <b>surprises</b>."),
+    L("Doosre ahem data: <b>CPI</b> (mehngai, central bank ko rate barhane par majboor karti hai), <b>NFP</b> (US naukriyan), <b>GDP</b>, <b>PMI</b>.","Other key data: <b>CPI</b> (inflation pushes central banks to hike), <b>NFP</b> (US jobs), <b>GDP</b>, <b>PMI</b>."),
+    L("<b>Carry trade</b>: kam rate wali currency bech kar zyada rate wali khareedna (jaise JPY bech kar). Is liye USD/JPY rate ke farq par bohat chalta hai.","<b>Carry trade</b>: sell a low-rate currency to buy a high-rate one (for example selling JPY). That is why USD/JPY follows rate differentials closely.")],
+    ()=>[Q(L("Fed ummeed se zyada rate barhaye to USD aam taur par?","If the Fed hikes more than expected, USD usually?"),[L("Mazboot","Strengthens"),L("Kamzor","Weakens"),L("Asar nahi","No effect")],0,L("Surprise hike = USD ki demand.","A hawkish surprise lifts USD.")),
+         Q(L("Market sab se zyada kis cheez par hilta hai?","What moves markets most?"),[L("Umeed se farq (surprise)","Surprise vs expectations"),L("Purani khabar","Old news"),L("Weekend","Weekends")],0,L("Expectation already price mein hoti hai.","Expectations are already priced in."))]),
+  mk("an3",2,()=>L("Sentiment: risk-on, risk-off aur COT","Sentiment: risk-on, risk-off and COT"),()=>[
+    L("<b>Risk-on</b> (log khush, stocks upar): AUD, NZD jaisi 'risk' currencies aksar mazboot. <b>Risk-off</b> (dar ka mahol): <b>JPY, CHF, USD</b> aur gold jaise 'safe haven' mazboot.","<b>Risk-on</b> (confidence, stocks up): risk currencies like AUD and NZD often gain. <b>Risk-off</b> (fear): safe havens like <b>JPY, CHF, USD</b> and gold gain."),
+    L("<b>COT report</b> (CFTC, har Friday): futures mein bare speculators ki positions batata hai. Bohat zyada ek taraf positioning = palatne ka khatra.","The <b>COT report</b> (CFTC, every Friday) shows big speculators' futures positions. Extreme one-sided positioning = reversal risk."),
+    L("<b>Retail positioning</b>: kai brokers batate hain ke unke clients kitne % long hain. Aksar isay <b>ulta (contrarian)</b> ishara samjha jata hai: jab zyada tar retail long ho to market neeche ja sakta hai.","<b>Retail positioning</b>: many brokers show what % of clients are long. It is often read as a <b>contrarian</b> signal: when most retail is long, price can fall.")],
+    ()=>[Q(L("Risk-off mein kaun si currency aam taur par mazboot hoti hai?","Which currency usually gains in risk-off?"),["JPY","AUD","NZD"],0,L("JPY safe haven hai.","JPY is a safe haven.")),
+         Q(L("80% retail traders EUR/USD long hain. Contrarian soch?","80% of retail is long EUR/USD. Contrarian view?"),[L("Neeche ka imkaan zyada","Downside more likely"),L("Pakka upar","Surely up"),L("Kuch nahi pata chalta","Tells nothing")],0,L("Bheer ke khilaaf ishara, guarantee nahi.","A signal against the crowd, not a guarantee."))]),
+  mk("an4",2,()=>L("Multi-timeframe: upar se neeche","Multi-timeframe: top down"),()=>[
+    L("Ek hi chart par faisla mat karo. <b>Bara timeframe</b> (Daily/H4) rukh (bias) batata hai, <b>chhota</b> (H1/M15) entry.","Don't decide on one chart. The <b>higher timeframe</b> (daily/H4) gives the bias, the <b>lower</b> (H1/M15) gives the entry."),
+    L("Misaal: Daily uptrend hai aur qeemat support zone par aayi. H1 par bullish structure shift (CHoCH) ka intezar karo, phir buy.","Example: daily is in an uptrend and price reaches a support zone. Wait for a bullish shift (CHoCH) on H1, then buy."),
+    L("Qanoon: chhote timeframe ka signal, bare timeframe ke khilaaf ho to kamzor hai.","Rule: a lower-timeframe signal against the higher-timeframe trend is weak.")],
+    ()=>[Q(L("Bias (rukh) kis timeframe se lete hain?","Where do you take the bias from?"),[L("Bara timeframe","Higher timeframe"),"M1",L("Koi bhi","Any")],0,L("HTF bias, LTF entry.","HTF bias, LTF entry.")),
+         Q(L("Daily downtrend, M5 par buy signal. Ye signal?","Daily downtrend, buy signal on M5. That signal is?"),[L("Kamzor, trend ke khilaaf","Weak, against the trend"),L("Sab se taqatwar","The strongest"),L("Hamesha sahi","Always right")],0,L("Bare trend ke saath chalo.","Trade with the bigger trend."))]),
+  /* ---------- Module 3: technical analysis and price action ---------- */
+  mk("ta1",3,()=>L("Market structure: HH, HL, LH, LL","Market structure: HH, HL, LH, LL"),()=>[
+    L("Price action ki jarh <b>structure</b> hai. Uptrend = <b>Higher High (HH)</b> aur <b>Higher Low (HL)</b>. Downtrend = <b>Lower High (LH)</b> aur <b>Lower Low (LL)</b>.","Price action starts with <b>structure</b>. Uptrend = <b>higher highs (HH)</b> and <b>higher lows (HL)</b>. Downtrend = <b>lower highs (LH)</b> and <b>lower lows (LL)</b>."),
+    "@fx:struct",
+    L("Trend ki simt mein naya high/low banna = <b>BOS (Break of Structure)</b>, trend jaari. Trend ke khilaaf pehla toot = <b>CHoCH (Change of Character)</b>, mood badalne ka pehla ishara.","A new high/low in the trend direction = <b>BOS (break of structure)</b>, trend continues. The first break against the trend = <b>CHoCH (change of character)</b>, the first sign of a shift."),
+    L("Swing points sirf wazeh oonch neech par lagao, har chhoti candle par nahi.","Mark swing points only on clear turns, not on every small candle.")],
+    ()=>[Q(L("Uptrend mein aakhri Higher Low neeche toot jaye to?","In an uptrend, the last higher low breaks. That is?"),["CHoCH","BOS",L("Kuch nahi","Nothing")],0,L("Trend ke khilaaf pehla toot = CHoCH.","First break against trend = CHoCH.")),
+         Q(L("Downtrend mein naya Lower Low = ?","A new lower low in a downtrend = ?"),["BOS","CHoCH","FVG"],0,L("Trend ki simt mein toot = BOS.","A break in the trend direction = BOS."))]),
+  mk("ta2",3,()=>L("Support, resistance aur zones","Support, resistance and zones"),()=>[
+    L("<b>Support</b>: jahan khareedar aakar qeemat rokte hain. <b>Resistance</b>: jahan bechne wale rokte hain. Ye patli line nahi, <b>zone</b> hoti hai.","<b>Support</b>: where buyers stop price falling. <b>Resistance</b>: where sellers stop it rising. They are <b>zones</b>, not thin lines."),
+    "@fx:sr",
+    L("Jitni baar zone ne qeemat roki aur jitna bara timeframe, zone utna ahem. Toot-ne ke baad resistance aksar support ban jata hai (<b>role reversal</b>).","The more touches and the higher the timeframe, the stronger the zone. After a break, resistance often becomes support (<b>role reversal</b>)."),
+    L("Round numbers (1.1000, 150.00) bhi aksar zone ka kaam karte hain.","Round numbers (1.1000, 150.00) often act as zones too.")],
+    ()=>[Q(L("Resistance toot gaya, phir qeemat wapas usi jagah aayi. Ab wo zone?","Resistance broke and price came back to it. The zone is now?"),[L("Support ban sakta hai","May act as support"),L("Bekar","Useless"),L("Hamesha toot-ta","Always breaks")],0,L("Role reversal.","Role reversal.")),
+         Q(L("Zone kab zyada ahem?","When is a zone stronger?"),[L("Zyada touch + bara timeframe","More touches + higher timeframe"),L("M1 par ek touch","One touch on M1"),L("Rang achha ho","Nice colour")],0,L("Bara TF aur kai reactions.","Higher TF and repeated reactions."))]),
+  mk("ta3",3,()=>L("Trendlines aur channels","Trendlines and channels"),()=>[
+    L("Uptrend mein do ya zyada <b>Higher Lows</b> ko jor kar trendline banti hai, downtrend mein <b>Lower Highs</b> ko.","In an uptrend, join two or more <b>higher lows</b>; in a downtrend, join <b>lower highs</b>."),
+    L("Teesra touch line ko tasdeeq karta hai. Samne wali taraf parallel line = <b>channel</b>.","A third touch confirms the line. A parallel line on the other side = a <b>channel</b>."),
+    L("Trendline toot-na akela reversal nahi. Structure (CHoCH) aur zone ke saath milao.","A trendline break alone is not a reversal. Combine it with structure (CHoCH) and zones.")],
+    ()=>[Q(L("Uptrend ki trendline kin points ko jorti hai?","An uptrend line connects which points?"),[L("Higher Lows","Higher lows"),L("Highs","Highs"),L("Random candles","Random candles")],0,L("Lows ko jorte hain.","Connect the lows.")),
+         Q(L("Trendline tooti. Pakka reversal?","The trendline broke. Certain reversal?"),[L("Nahi, structure se tasdeeq","No, confirm with structure"),L("Haan, foran sell","Yes, sell now")],0,L("Akela toot kafi nahi.","A break alone isn't enough."))]),
+  mk("ta4",3,()=>L("Candle patterns sahi jagah par","Candle patterns at the right place"),()=>[
+    L("Candle pattern ki taqat uski <b>jagah</b> se hai. Bina level ke pin bar sirf ek candle hai.","A candle pattern's power comes from <b>location</b>. Without a level, a pin bar is just a candle."),
+    L("<b>Pin bar</b>: lambi wick, chhoti body. Support par neeche wali lambi wick = rejection. <b>Engulfing</b>: doosri candle pehli ki poori body nigal le. <b>Inside bar</b>: poori candle pichli ke andar, toot-ne ka intezar.","<b>Pin bar</b>: long wick, small body. A long lower wick at support = rejection. <b>Engulfing</b>: the second body swallows the first. <b>Inside bar</b>: fully inside the previous candle; wait for the break."),
+    L("Behtar setup: trend + zone + pattern. Teen cheezein ek jagah = <b>confluence</b>.","Better setups: trend + zone + pattern together = <b>confluence</b>.")],
+    ()=>[Q(L("Pin bar kab ahem hai?","When does a pin bar matter?"),[L("Ahem zone par","At a key zone"),L("Kahin bhi","Anywhere"),L("Sirf Monday","Only Mondays")],0,L("Location sab se pehle.","Location first.")),
+         Q(L("Confluence ka matlab?","What is confluence?"),[L("Kai wajahen ek jagah","Several reasons at one place"),L("Ek indicator","One indicator"),L("Bara lot","A big lot")],0,L("Trend + zone + pattern.","Trend + zone + pattern."))]),
+  mk("ta5",3,()=>L("Chart patterns","Chart patterns"),()=>[
+    L("<b>Double top</b>: do baar ek hi resistance se wapsi. Neckline toote to neeche ka ishara. (Double bottom iska ulta.)","<b>Double top</b>: two rejections at the same resistance. A neckline break signals down. (Double bottom is the opposite.)"),
+    "@fx:dtop",
+    L("<b>Head and shoulders</b>: beech wala high sab se ooncha, dono taraf chhote. Neckline ka toot reversal ka ishara.","<b>Head and shoulders</b>: a higher middle peak with two lower shoulders. A neckline break signals a reversal."),
+    "@fx:hs",
+    L("<b>Triangles</b> aur <b>flags</b> aksar trend ke beech aaraam hote hain, aur toot-ne par trend jaari rehta hai. Hamesha neckline/toot ka <b>close</b> dekho, sirf wick nahi.","<b>Triangles</b> and <b>flags</b> are often pauses within a trend, and the break usually continues it. Always wait for a <b>close</b> through the line, not just a wick.")],
+    ()=>[Q(L("Double top kab confirm hota hai?","When is a double top confirmed?"),[L("Neckline ke neeche close","Close below the neckline"),L("Doosre top par","At the second top"),L("Kabhi nahi","Never")],0,L("Neckline ka toot.","The neckline break.")),
+         Q(L("Flag pattern aam taur par?","A flag pattern usually?"),[L("Trend jaari","Continues the trend"),L("Hamesha reversal","Always reverses"),L("Range khatam","Ends the market")],0,L("Continuation pattern.","Continuation pattern."))]),
+  mk("ta6",3,()=>L("Indicators: MA, RSI, MACD, ATR","Indicators: MA, RSI, MACD, ATR"),()=>[
+    L("Indicators qeemat se hi bante hain, is liye price ke <b>peeche</b> chalte hain. Inhein madadgar samjho, signal ki machine nahi.","Indicators are built from price, so they <b>lag</b>. Treat them as helpers, not signal machines."),
+    L("<b>Moving Average</b> (jaise 50 aur 200): trend ka rukh. Qeemat 200 MA ke upar = aam taur par bullish mahol.","<b>Moving average</b> (e.g. 50 and 200): trend direction. Price above the 200 MA = generally bullish."),
+    L("<b>RSI (14)</b>: 70 se upar overbought, 30 se neeche oversold. Taqatwar trend mein RSI der tak 70 ke upar reh sakta hai. <b>Divergence</b> (qeemat naya high, RSI nahi) kamzori ka ishara.","<b>RSI (14)</b>: above 70 overbought, below 30 oversold. In strong trends it can stay above 70 for long. <b>Divergence</b> (price makes a new high, RSI doesn't) hints at weakness."),
+    L("<b>MACD (12, 26, 9)</b>: momentum. <b>ATR (14)</b>: average range. Pro tip: stop ko ATR se door rakho (jaise 1.5 × ATR) taake aam shor se na lage.","<b>MACD (12, 26, 9)</b>: momentum. <b>ATR (14)</b>: average range. Pro tip: place stops beyond normal noise (e.g. 1.5 × ATR).")],
+    ()=>[Q(L("RSI 75 par hai, uptrend taqatwar. Kya foran sell?","RSI at 75 in a strong uptrend. Sell immediately?"),[L("Nahi, trend mein der tak upar reh sakta","No, it can stay high in trends"),L("Haan, pakka girega","Yes, it must fall")],0,L("Overbought ≠ sell signal.","Overbought ≠ sell signal.")),
+         Q(L("Stop ka fasla tay karne ke liye kaunsa indicator?","Which indicator helps size the stop distance?"),["ATR","RSI","MACD"],0,L("ATR volatility napta hai.","ATR measures volatility."))]),
+  mk("ta7",3,()=>L("Fibonacci retracement","Fibonacci retracement"),()=>[
+    L("Trend mein qeemat seedhi nahi jati, wapas (retrace) aati hai. Fibonacci levels: <b>38.2%, 50%, 61.8%</b> (aur 78.6%) pullback ke aam ilaqe.","Trends move in waves and pull back. Fibonacci levels <b>38.2%, 50%, 61.8%</b> (and 78.6%) mark common pullback areas."),
+    "@fx:fib",
+    L("Uptrend mein swing <b>Low se High</b> tak kheencho. Fib akela kaafi nahi: jab 61.8% kisi purane support zone se mile, tab confluence.","In an uptrend draw from swing <b>low to high</b>. Fib alone is not enough: when 61.8% lines up with an old support zone, that's confluence.")],
+    ()=>[Q(L("Uptrend mein fib kahan se kahan?","In an uptrend, draw the fib from?"),[L("Swing Low se Swing High","Swing low to swing high"),L("High se Low","High to low"),L("Kahin se bhi","Anywhere")],0,L("Low → High.","Low → high.")),
+         Q(L("20 se 80 ka move. 50% retracement kahan?","Move from 20 to 80. Where is the 50% retracement?"),["50","40","65"],0,L("80 − 30 = 50.","80 − 30 = 50."))]),
+  /* ---------- Module 4: SMC, ICT, volume ---------- */
+  mk("sm1",4,()=>L("Smart Money Concepts (SMC) kya hai?","What are Smart Money Concepts (SMC)?"),()=>[
+    L("SMC ka khayal: bare institutions (smart money) ko itna bara order bharne ke liye <b>liquidity</b> chahiye, yani doosron ke orders. Is liye qeemat aksar wahan jati hai jahan stops jama hain.","The SMC idea: big institutions need <b>liquidity</b> (other people's orders) to fill huge positions, so price often travels to where stops are clustered."),
+    L("SMC ke aham hissay: <b>structure (BOS/CHoCH)</b>, <b>liquidity</b>, <b>order blocks</b>, <b>fair value gaps</b>, <b>premium/discount</b>. Aap structure pehle hi seekh chuke ho.","SMC's main parts: <b>structure (BOS/CHoCH)</b>, <b>liquidity</b>, <b>order blocks</b>, <b>fair value gaps</b>, <b>premium/discount</b>. You already know structure."),
+    L("Imaandari ki baat: SMC mashhoor hai lekin <b>koi jadoo nahi</b>. Kai cheezein purane supply/demand ke naye naam hain. Har setup ko <b>backtest</b> karo aur risk 1% rakho.","Honest note: SMC is popular but <b>not magic</b>. Many ideas are classic supply/demand with new names. <b>Backtest</b> every setup and keep risk at 1%.")],
+    ()=>[Q(L("SMC ke mutabiq qeemat aksar kahan jati hai?","According to SMC, where does price often go?"),[L("Jahan liquidity (stops) ho","Where liquidity (stops) sits"),L("Hamesha round number","Always round numbers"),L("Kahin nahi","Nowhere")],0,L("Liquidity magnet ki tarah.","Liquidity acts like a magnet.")),
+         Q(L("SMC setup ke saath bhi kya zaroori?","Even with SMC setups, what is essential?"),[L("Backtest aur 1% risk","Backtesting and 1% risk"),L("Bara lot","Big lot"),L("Bina stop","No stop")],0,L("Koi method guarantee nahi.","No method is guaranteed."))]),
+  mk("sm2",4,()=>L("Liquidity aur stop hunt (sweep)","Liquidity and stop hunts (sweeps)"),()=>[
+    L("<b>Buy-side liquidity (BSL)</b>: highs ke upar (sellers ke stops, breakout buyers). <b>Sell-side liquidity (SSL)</b>: lows ke neeche.","<b>Buy-side liquidity (BSL)</b>: above highs (sellers' stops, breakout buyers). <b>Sell-side liquidity (SSL)</b>: below lows."),
+    L("<b>Equal highs/lows</b> sab se wazeh liquidity hain, kyunki sab ke stops wahin hote hain.","<b>Equal highs/lows</b> are the most obvious liquidity, because everyone's stops sit there."),
+    "@fx:sweep",
+    L("<b>Sweep</b>: qeemat level ke paar jati hai (stops lagte hain), phir wapas andar <b>close</b> karti hai. Iske baad structure shift (CHoCH) ho to reversal ka imkaan barhta hai.","<b>Sweep</b>: price pokes through the level (stops trigger), then <b>closes</b> back inside. A structure shift (CHoCH) after it raises reversal odds."),
+    L("Sabaq: apna stop sab ki tarah equal high ke bilkul upar mat rakho.","Lesson: don't park your stop right above equal highs like everyone else.")],
+    ()=>[Q(L("Equal lows ke neeche kya hota hai?","What sits below equal lows?"),[L("Sell-side liquidity","Sell-side liquidity"),L("Buy-side liquidity","Buy-side liquidity"),"FVG"],0,L("Lows ke neeche stops = SSL.","Stops below lows = SSL.")),
+         Q(L("Sweep ki pehchan?","How do you recognise a sweep?"),[L("Level ke paar wick, wapas andar close","Wick through the level, close back inside"),L("Level ke paar close aur aage","Close beyond and continue"),L("Koi harkat nahi","No movement")],0,L("Wick bahar, close andar.","Wick out, close in."))]),
+  mk("sm3",4,()=>L("Order block","Order blocks"),()=>[
+    L("<b>Bullish order block</b>: tez upar wale move (jo structure tore) se <b>pehle ki aakhri laal candle</b>. Bearish OB: tez neeche wale move se pehle ki aakhri hari candle.","<b>Bullish order block</b>: the <b>last down candle</b> before a strong up move that breaks structure. Bearish OB: the last up candle before a strong drop."),
+    "@fx:ob",
+    L("Khayal: wahan institutions ne orders bhare, aur qeemat wapas aaye to bache orders phir react kar sakte hain.","Idea: institutions filled orders there, and when price returns remaining orders may react again."),
+    L("Achha OB: (1) usne liquidity li ho, (2) baad mein BOS hua ho, (3) FVG chhora ho, (4) abhi tak test na hua ho. Pehli wapsi sab se taqatwar.","A good OB: (1) took liquidity, (2) led to a BOS, (3) left an FVG, (4) is still untested. The first return is the strongest.")],
+    ()=>[Q(L("Bullish OB kaun si candle?","Which candle is a bullish OB?"),[L("Tez upar move se pehle ki aakhri laal","Last down candle before the strong up move"),L("Sab se lambi hari","The biggest green candle"),L("Pehli candle","The first candle")],0,L("Impulse se pehle ki aakhri opposite candle.","Last opposite candle before the impulse.")),
+         Q(L("Kaunsa OB zyada behtar?","Which OB is better?"),[L("BOS ke saath, untested","With a BOS, untested"),L("5 baar test ho chuka","Tested five times"),L("Bina structure","Without structure")],0,L("Fresh aur structure wala.","Fresh and structural."))]),
+  mk("sm4",4,()=>L("Fair Value Gap (FVG)","Fair value gap (FVG)"),()=>[
+    L("<b>FVG (imbalance)</b>: 3 candles ka pattern. Bullish FVG: candle 1 ka <b>High</b> aur candle 3 ka <b>Low</b> aapas mein nahi milte. Beech ka khaali hissa candle 2 ki tezi se bana.","<b>FVG (imbalance)</b>: a 3-candle pattern. Bullish FVG: candle 1's <b>high</b> and candle 3's <b>low</b> don't overlap. The gap was left by candle 2's speed."),
+    "@fx:fvg",
+    L("Qeemat aksar is gap ko <b>bharne (fill/rebalance)</b> wapas aati hai, phir apne rukh mein chalti hai. FVG + OB + discount ek jagah = mazboot confluence.","Price often returns to <b>fill/rebalance</b> the gap, then continues. FVG + OB + discount together = strong confluence."),
+    L("Har FVG bhara nahi jata, aur har bhara hua FVG kaam nahi karta. Bare timeframe ke rukh mein wale FVG chuno.","Not every FVG fills, and not every filled FVG holds. Prefer FVGs in the higher-timeframe direction.")],
+    ()=>[Q(L("Bullish FVG kaise napte hain?","How is a bullish FVG measured?"),[L("Candle 1 ka High se candle 3 ka Low","Candle 1 high to candle 3 low"),L("Candle 2 ki body","Candle 2's body"),L("Do din ka range","Two days' range")],0,L("1 ka High aur 3 ka Low ke beech.","Between candle 1 high and candle 3 low.")),
+         Q(L("FVG bharne ka matlab?","What does filling an FVG mean?"),[L("Qeemat wapas gap mein aayi","Price returned into the gap"),L("Account bharna","Funding the account"),L("Spread","Spread")],0,L("Rebalance.","Rebalance."))]),
+  mk("ict1",4,()=>L("ICT: premium, discount aur OTE","ICT: premium, discount and OTE"),()=>[
+    L("ICT (Inner Circle Trader) concepts SMC ke qareeb hain. Pehla qanoon: <b>dealing range</b> (swing low se swing high) ka <b>50%</b> = equilibrium.","ICT (Inner Circle Trader) concepts are close to SMC. Rule one: the <b>dealing range</b>'s (swing low to swing high) <b>50%</b> = equilibrium."),
+    "@fx:pd",
+    L("<b>Buy discount mein</b> (50% se neeche), <b>sell premium mein</b> (50% se upar). Sasti cheez khareedo, mehngi becho.","<b>Buy in discount</b> (below 50%), <b>sell in premium</b> (above 50%). Buy cheap, sell expensive."),
+    L("<b>OTE (Optimal Trade Entry)</b>: 62% se 79% retracement ka ilaqa (70.5% beech). Jab yahan FVG ya OB bhi ho, to setup mazboot.","<b>OTE (optimal trade entry)</b>: the 62% to 79% retracement area (70.5% in the middle). With an FVG or OB inside it, the setup is stronger.")],
+    ()=>[Q(L("Bullish bias mein buy kahan dhoondte hain?","With a bullish bias, where do you look to buy?"),["Discount","Premium",L("Bilkul top par","At the very top")],0,L("50% se neeche.","Below 50%.")),
+         Q(L("Range 20 se 80. Equilibrium?","Range 20 to 80. Equilibrium?"),["50","40","60"],0,L("Beech = 50.","Middle = 50."))]),
+  mk("ict2",4,()=>L("ICT: kill zones aur Power of 3","ICT: kill zones and Power of 3"),()=>[
+    L("<b>Kill zones</b> wo ghante jab bara volume aata hai. Pakistan time (lagbhag, sardiyon mein): <b>London</b> dopahar 12 se 3, <b>New York</b> shaam 5 se 8. Garmiyon mein ek ghanta pehle.","<b>Kill zones</b> are the high-volume hours. Pakistan time (approx., winter): <b>London</b> 12 to 3 PM, <b>New York</b> 5 to 8 PM. One hour earlier in summer."),
+    L("<b>Power of 3 (AMD)</b>: din ke 3 hissay. <b>Accumulation</b> (Asia mein range), <b>Manipulation</b> (London open par jhoota move, liquidity sweep), <b>Distribution</b> (asal rukh ka bara move).","<b>Power of 3 (AMD)</b>: three parts of the day. <b>Accumulation</b> (Asian range), <b>manipulation</b> (a false move at London open that sweeps liquidity), <b>distribution</b> (the real move)."),
+    L("<b>Judas swing</b>: session khulte hi ulta jhoota move jo traders ko phansata hai. Ye sab <b>model</b> hain, har din aisa nahi hota. Backtest karo.","<b>Judas swing</b>: a false move at the session open that traps traders. These are <b>models</b>; not every day plays out this way. Backtest them.")],
+    ()=>[Q(L("Power of 3 ka 'M'?","The 'M' in Power of 3 (AMD)?"),["Manipulation",L("Momentum","Momentum"),L("Margin","Margin")],0,L("Accumulation, Manipulation, Distribution.","Accumulation, manipulation, distribution.")),
+         Q(L("London kill zone (PKT, sardi) lagbhag?","London kill zone (PKT, winter) roughly?"),[L("Dopahar 12 se 3","12 to 3 PM"),L("Subah 5 se 8","5 to 8 AM"),L("Raat 2 se 5","2 to 5 AM")],0,L("London open ke aas paas.","Around the London open."))]),
+  mk("vol1",4,()=>L("Volume: forex mein kaise?","Volume: how does it work in forex?"),()=>[
+    L("Forex OTC hai, is liye koi <b>markazi (central) volume</b> nahi. Broker ka chart <b>tick volume</b> dikhata hai (kitni baar qeemat badli). Ye asal volume ka kaafi achha andaza hai.","Forex is OTC, so there is no <b>central volume</b>. Broker charts show <b>tick volume</b> (how often price changed). It is a decent proxy for real volume."),
+    L("Asal volume ke liye log <b>CME futures</b> dekhte hain (jaise EUR ke liye 6E).","For real volume, traders check <b>CME futures</b> (e.g. 6E for the euro)."),
+    "@fx:vol",
+    L("<b>Volume Spread Analysis (VSA)</b>: breakout par volume barhe = taqat. Naye high par volume kam = kamzori. Bohat bara volume aur chhoti candle top par = supply (bechne wale) aa gaye.","<b>Volume spread analysis (VSA)</b>: rising volume on a breakout = strength. Low volume at a new high = weakness. Huge volume with a small candle at a top = supply arriving.")],
+    ()=>[Q(L("Forex chart par volume kya hota hai?","What volume does a forex chart show?"),[L("Tick volume","Tick volume"),L("Poore market ka asal volume","The whole market's real volume"),L("Kuch nahi","Nothing")],0,L("OTC, is liye tick volume.","OTC, so tick volume.")),
+         Q(L("Naya high, lekin volume kam. Ishara?","New high but low volume. Signal?"),[L("Kamzori","Weakness"),L("Bohat taqat","Huge strength"),L("Kuch nahi","Nothing")],0,L("Khareedar thak rahe hain.","Buyers are tiring."))]),
+  mk("vol2",4,()=>L("Volume profile aur Wyckoff","Volume profile and Wyckoff"),()=>[
+    L("<b>Volume profile</b>: waqt ke bajaye <b>qeemat</b> par volume. Sab se zyada volume wali qeemat = <b>POC</b>. 70% volume wala ilaqa = <b>Value Area</b> (VAH upar, VAL neeche).","<b>Volume profile</b>: volume by <b>price</b> instead of time. The highest-volume price = <b>POC</b>. The zone holding 70% of volume = <b>value area</b> (VAH top, VAL bottom)."),
+    "@fx:vp",
+    L("Zyada volume wale ilaqe (HVN) qeemat ko rokte hain, kam volume wale (LVN) se qeemat tezi se guzarti hai.","High-volume nodes (HVN) slow price down; price moves fast through low-volume nodes (LVN)."),
+    L("<b>Wyckoff</b>: purana tareeqa. <b>Accumulation</b> (bare players chupke se khareedte hain, range), phir <b>spring</b> (range ke neeche jhoota toot = liquidity), phir markup. <b>Distribution</b> iska ulta (upthrust). SMC ka 'sweep' isi se milta hai.","<b>Wyckoff</b>: a classic method. <b>Accumulation</b> (big players quietly buy in a range), then a <b>spring</b> (false break below the range = liquidity), then markup. <b>Distribution</b> is the opposite (upthrust). SMC's 'sweep' comes from this idea.")],
+    ()=>[Q(L("POC kya hai?","What is the POC?"),[L("Sab se zyada volume wali qeemat","Price with the most volume"),L("Sab se ooncha high","Highest high"),L("Broker ka naam","A broker")],0,L("Point of Control.","Point of control.")),
+         Q(L("Wyckoff 'spring'?","Wyckoff 'spring'?"),[L("Range ke neeche jhoota toot","False break below the range"),L("Bahar ka mausam","The season"),L("Naya high","A new high")],0,L("Liquidity le kar wapas range mein.","Takes liquidity and returns into the range."))]),
+  /* ---------- Module 5: plan and psychology ---------- */
+  mk("pl1",5,()=>L("Trading plan aur expectancy","Trading plan and expectancy"),()=>[
+    L("Plan likho: kaunse pairs, kaunse ghante, kaunsa setup, entry ka qanoon, stop kahan, target kahan, risk kitna (1%), din ki max loss.","Write a plan: which pairs, which hours, which setup, entry rule, stop, target, risk (1%), daily max loss."),
+    L("<b>Expectancy</b> = (Jeet % × average jeet) − (Haar % × average haar). Misaal: 40% jeet, 2R jeet, 1R haar = 0.4×2 − 0.6×1 = <b>+0.2R</b> har trade. Kam jeet ke saath bhi faida mumkin hai.","<b>Expectancy</b> = (win % × avg win) − (loss % × avg loss). Example: 40% wins at 2R, losses 1R = 0.4×2 − 0.6×1 = <b>+0.2R</b> per trade. You can profit with a low win rate."),
+    L("Setup ko kam az kam <b>100 trades</b> tak backtest/demo karo, phir faisla. Journal mein har trade aur jazbaat likho.","Backtest or demo a setup for at least <b>100 trades</b> before judging it. Journal every trade and the emotion behind it.")],
+    ()=>[Q(L("50% jeet, jeet 1R, haar 1R. Expectancy?","50% wins, wins 1R, losses 1R. Expectancy?"),["0R","+1R","+0.5R"],0,L("0.5×1 − 0.5×1 = 0.","0.5×1 − 0.5×1 = 0.")),
+         Q(L("30% jeet, jeet 3R, haar 1R. Expectancy?","30% wins at 3R, losses 1R. Expectancy?"),["+0.2R","−0.4R","+0.9R"],0,L("0.3×3 − 0.7×1 = 0.9 − 0.7 = 0.2R.","0.3×3 − 0.7×1 = 0.2R.")),
+         Q(L("Setup par yaqeen kab?","When should you trust a setup?"),[L("100+ trades ke backtest ke baad","After 100+ backtested trades"),L("2 jeet ke baad","After 2 wins"),L("YouTube dekh kar","After a YouTube video")],0,L("Sample size zaroori.","Sample size matters."))]),
+  mk("pl2",5,()=>L("Nafsiyat: sab se bara edge","Psychology: the biggest edge"),()=>[
+    L("Zyada tar traders method ki wajah se nahi, <b>discipline</b> ki wajah se haarte hain: revenge trade, FOMO, stop hatana, overtrading.","Most traders lose not because of the method but because of <b>discipline</b>: revenge trades, FOMO, moving stops, overtrading."),
+    L("Qawaneen: din mein 2 loss ke baad band. Plan ke baghair trade nahi. Profit ke baad bhi size na barhao.","Rules: stop after 2 losses in a day. No trade without a plan. Don't raise size after wins."),
+    L("Funded/prop challenges bhi isi ka imtihaan hain: rozana aur kul drawdown ki had. Is game ki Academy mein yahi practice hoti hai, virtual paise se.","Funded/prop challenges test exactly this: daily and total drawdown limits. This game's Academy practises it with virtual money."),
+    L("Ustaad Ullu: koi bhi method (SMC, ICT, price action) <b>profit ki guarantee nahi</b> deta. Bachat aapke risk control mein hai.","Ustaad Ullu: no method (SMC, ICT, price action) <b>guarantees profit</b>. Survival lives in your risk control.")],
+    ()=>[Q(L("Do loss lagataar. Ab?","Two losses in a row. Now?"),[L("Ruko, break lo","Stop and take a break"),L("Double size","Double size"),L("Stop hata do","Remove the stop")],0,L("Revenge se bacho.","Avoid revenge.")),
+         Q(L("Kaunsa method profit guarantee karta hai?","Which method guarantees profit?"),[L("Koi nahi","None"),"SMC","ICT"],0,L("Edge + risk control, guarantee nahi.","Edge + risk control, never a guarantee."))])
+  );
+  // place the earlier forex lessons into the course modules
+  const put={fx1:1,fx2:1,fx4:1,fx3:1,fx5:1,fx6:2};
+  Object.entries(put).forEach(([id,m])=>{ const l=LESSONS.find(x=>x.id===id); if(l){ l.mod=m; l.st=0; } });
+}
+const FX_ORDER = ["fxA","fx1","fx2","fx4","fx3","fxB","fx5","fxC", "an1","an2","fx6","an3","an4", "ta1","ta2","ta3","ta4","ta5","ta6","ta7", "sm1","sm2","sm3","sm4","ict1","ict2","vol1","vol2", "pl1","pl2"];
+function modLessons(m){ return FX_ORDER.map(id=>LESSONS.find(l=>l.id===id)).filter(l=>l && l.mod===m); }
+function modDone(m){ return modLessons(m).every(l=>S.lessons[l.id]); }
+function modOpen(m){ return S.tester || m===1 || (modDone(m-1) && !!(S.fxExam||{})[m-1]); }
+function courseOpen(l){ return modOpen(l.mod); }
+function courseHTML(){
+  return FX_MODS.map(M=>{ const ls=modLessons(M.n), done=ls.filter(l=>S.lessons[l.id]).length, open=modOpen(M.n), passed=(S.fxExam||{})[M.n];
+    return `<div class="stack" style="gap:6px;margin-top:10px"><div class="row between"><span class="label">Module ${M.n} · ${L(M.ur,M.en)}</span><span class="pill ${done===ls.length?"gold":""}">${done}/${ls.length}</span></div>
+      ${ls.map(l=>{ const ok=open, d=S.lessons[l.id]; return `<button class="lesson-item" data-id="${l.id}" ${ok?"":"disabled"} style="${ok?"":"opacity:.5"}"><span><b style="font-weight:500">${l.title}</b><br><small class="muted">Forex · Module ${M.n}</small></span><span class="pill ${d?"gold":""}">${!ok?L("Band","Locked"):d?L("Mukammal","Done"):L("Naya","New")}</span></button>`; }).join("")}
+      ${open? `<button class="btn ${passed?"ghost":"primary"} block" data-exam="${M.n}" ${done===ls.length||S.tester?"":"disabled"}>${passed? L("Boss test paas ✓ (dobara khelo)","Boss test passed ✓ (replay)") : done===ls.length||S.tester? L(`Module ${M.n} ka boss test`,`Module ${M.n} boss test`) : L("Boss test: pehle saare sabaq","Boss test: finish the lessons first")}</button>` : `<small class="muted">${L(`Module ${M.n-1} ke sabaq aur boss test mukammal karo, ye khul jayega.`,`Finish module ${M.n-1} and its boss test to unlock.`)}</small>`}</div>`; }).join("");
+}
+function moduleExam(m){
+  const pool=[]; modLessons(m).forEach(l=>l.quiz.forEach(q=>pool.push(q)));
+  for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+  const qs=pool.slice(0,6); let i=0, score=0;
+  const ask=()=>{ const Qn=qs[i], order=Qn.o.map((o,k)=>k).sort(()=>Math.random()-.5);
+    openSheet(`<span class="pill boss">Boss</span> <span class="label">Module ${m} · ${i+1}/${qs.length}</span><h3 style="font-size:18px">${Qn.q}</h3>
+      <div class="stack" style="gap:8px">${order.map(k=>`<button class="opt" data-k="${k}">${Qn.o[k]}</button>`).join("")}</div><p class="muted" id="why" hidden></p><button class="btn primary block" id="nx" hidden>${L("Aage","Next")}</button>`);
+    $$(".opt").forEach(b=>b.onclick=()=>{ const k=+b.dataset.k; $$(".opt").forEach(x=>{ x.disabled=true; if(+x.dataset.k===Qn.a) x.classList.add("right"); });
+      if(k===Qn.a){ score++; sfx("ok"); } else { b.classList.add("wrong"); sfx("bad"); }
+      $("#why").innerHTML=`<b>${k===Qn.a?L("Sahi!","Correct!"):L("Ghalat.","Wrong.")}</b> ${Qn.w}`; $("#why").hidden=false; $("#nx").hidden=false; });
+    $("#nx").onclick=()=>{ i++; if(i<qs.length) return ask(); finish(); };
+  };
+  const finish=()=>{ const pass=score>=5; S.fxExam=S.fxExam||{}; const first=pass&&!S.fxExam[m];
+    if(pass){ S.fxExam[m]=true; sfx("win"); confetti(); if(first){ S.xp+=100; addCoins(60, L(`Module ${m} paas`,`Module ${m} passed`)); } } else sfx("lose");
+    save(); renderHome();
+    openSheet(`<h2>${score}/${qs.length} ${pass? L("· Boss paar!","· Boss beaten!") : ""}</h2><p>${pass? (first? L("+100 XP aur +60 coins. Agla module khul gaya.","+100 XP and +60 coins. Next module unlocked.") : L("Shabash, dobara bhi paas.","Nice, passed again.")) : L("5 sahi chahiye thay. Sabaq dohrao aur phir koshish karo.","You need 5 correct. Review the lessons and try again.")}</p><button class="btn primary block" id="d">${L("Course par wapas","Back to course")}</button>`);
+    $("#d").onclick=lessonsList; };
+  ask();
+}
+
 /* ================== MARKET GENERATION ================== */
 function rng(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return((t^t>>>14)>>>0)/4294967296; }; }
 const HIST=30, LIVE=40;
@@ -1979,20 +2246,22 @@ function breathe(fromMarket){
 function lessonsList(){
   openSheet(`<div class="row between"><h2>Sabaq</h2><button class="btn ghost" id="x" style="min-height:36px">Band</button></div>
     <p class="muted" style="font-size:13px">Har stage ke apne sabaq hain. Pehli baar par +40 XP aur har sahi jawab par +10.</p>
-    <div class="lesson-list">${LESSONS.filter(l=>lessonShown(l)).map(l=>{ const open=lessonOpen(l), done=S.lessons[l.id];
-      return `<button class="lesson-item" data-id="${l.id}" ${open?"":"disabled"} style="${open?"":"opacity:.5"}"><span><b style="font-weight:500">${l.title}</b><br><small class="muted">${l.k==="fx"?"Forex · ":l.k==="cr"?"Crypto · ":""}Stage ${l.st+1}</small></span><span class="pill ${done?'gold':''}">${!open?"Band":done?"Mukammal":"Naya"}</span></button>`; }).join("")}</div>`);
+    <div class="lesson-list">${LESSONS.filter(l=>lessonShown(l)&&!l.mod).map(l=>{ const open=lessonOpen(l), done=S.lessons[l.id];
+      return `<button class="lesson-item" data-id="${l.id}" ${open?"":"disabled"} style="${open?"":"opacity:.5"}"><span><b style="font-weight:500">${l.title}</b><br><small class="muted">${l.k==="fx"?"Forex · ":l.k==="cr"?"Crypto · ":""}Stage ${l.st+1}</small></span><span class="pill ${done?'gold':''}">${!open?"Band":done?"Mukammal":"Naya"}</span></button>`; }).join("")}</div>
+    ${(!S.track||S.track!=="cr")? `<div class="card" style="margin-top:12px;padding:14px"><h3 style="margin:0">${L("Forex Course","Forex Course")}</h3><p class="muted" style="font-size:13px;margin:4px 0 0">${L("5 modules: buniyad se SMC, ICT aur volume tak. Har module ke aakhir mein boss test.","5 modules: from basics to SMC, ICT and volume. A boss test ends each module.")}</p>${courseHTML()}</div>` : ""}`);
   $("#x").onclick=closeSheet;
   $$(".lesson-item").forEach(b=>b.onclick=()=>openLesson(b.dataset.id));
+  $$("[data-exam]").forEach(b=>b.onclick=()=>moduleExam(+b.dataset.exam));
 }
 function openLesson(id, after){
   const L=LESSONS.find(l=>l.id===id);
-  openSheet(`<span class="label">Ustaad Ullu ki baat · Stage ${L.st+1}</span><h2>${L.title}</h2><div class="mentor" style="align-items:flex-start">${owlSVG()}<div class="bubble body">${L.body.map(lessonBlock).join("")}</div></div><button class="btn primary block" id="q">Mission check: 2 sawal</button>`);
+  openSheet(`<span class="label">Ustaad Ullu ki baat · ${L.mod? "Forex Module "+L.mod : "Stage "+(L.st+1)}</span><h2>${L.title}</h2><div class="mentor" style="align-items:flex-start">${owlSVG()}<div class="bubble body">${L.body.map(lessonBlock).join("")}</div></div><button class="btn primary block" id="q">Mission check: 2 sawal</button>`);
   if($("#animBox")){ candleAnim(true); $("#aG").onclick=()=>candleAnim(true); $("#aR").onclick=()=>candleAnim(false); }
   $("#q").onclick=()=>{ clearInterval(animTimer); quiz(L,0,0,after); };
 }
 function quiz(L,i,score,after){
   const Q=L.quiz[i];
-  openSheet(`<span class="label">Quiz ${i+1} / ${L.quiz.length}</span><h3 style="font-size:18px">${Q.q}</h3><div class="stack" style="gap:8px">${Q.o.map((o,k)=>`<button class="opt" data-k="${k}">${o}</button>`).join("")}</div><p class="muted" id="why" hidden></p><button class="btn primary block" id="nx" hidden>Aage</button>`);
+  openSheet(`<span class="label">Quiz ${i+1} / ${L.quiz.length}</span><h3 style="font-size:18px">${Q.q}</h3><div class="stack" style="gap:8px">${Q.o.map((o,k)=>k).sort(()=>Math.random()-.5).map(k=>{ const o=Q.o[k]; return `<button class="opt" data-k="${k}">${o}</button>`; }).join("")}</div><p class="muted" id="why" hidden></p><button class="btn primary block" id="nx" hidden>Aage</button>`);
   $$(".opt").forEach(b=>b.onclick=()=>{
     const k=+b.dataset.k; $$(".opt").forEach(x=>{ x.disabled=true; if(+x.dataset.k===Q.a) x.classList.add("right"); });
     if(k===Q.a) score++; else b.classList.add("wrong");
