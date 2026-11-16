@@ -44,7 +44,7 @@ Privacy: players ki maloomat sirf zaroori kaam ke liye rakho, kisi ko share na k
 
 ## Admin site (admin.html)
 - Hosted link: `https://mmuhammad3077-dev.github.io/tradeverse/admin.html` (game ke saath hi upload hota hai).
-- Default PIN: **2580**. PIN badalne ke liye: browser console mein `crypto.subtle.digest("SHA-256", new TextEncoder().encode("sukoon-admin:NAYA_PIN")).then(b=>console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")))` chalao, aur jo lamba code aaye usay admin.html mein `PIN_HASH` ki jagah rakho. Ya Claude se kaho.
+- PIN owner ne badal diya hai (yahan likha nahi). PIN badalne ke liye: browser console mein `crypto.subtle.digest("SHA-256", new TextEncoder().encode("sukoon-admin:NAYA_PIN")).then(b=>console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")))` chalao, aur jo lamba code aaye usay admin.html mein `PIN_HASH` ki jagah rakho. Ya Claude se kaho.
 - PIN sirf page ko chhupata hai (ye browser ke andar check hota hai, asli security nahi). Asli hifazat `apps-script.gs` ki **ADMIN_KEY** hai: Google ke server par check hoti hai, is ke baghair koi players ki list nahi parh sakta.
 - Tabs: Overview (stats aur charts), Players (search, filter, player detail, CSV copy, WhatsApp), Player view (game phone frame mein), Connect (Sheet URL + admin key).
 - Sheet nahi judi to sample data dikhta hai, aur us par saaf likha hota hai ke ye misaal hai.
