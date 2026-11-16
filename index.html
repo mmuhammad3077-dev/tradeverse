@@ -231,6 +231,10 @@ canvas#chart{display:block;width:100%;height:290px;touch-action:pan-y}
 .brand .sub{color:var(--gold)}
 .btn.gold{background:var(--gold);color:#14100A;font-weight:600}
 .coinpill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;border:1px solid color-mix(in srgb, var(--gold) 55%, transparent);background:color-mix(in srgb, var(--gold) 14%, transparent);font-size:13px;white-space:nowrap}
+.abtns{display:flex;gap:6px;justify-content:flex-end;margin-top:6px}
+.abtn{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
+.abtn svg{width:17px;height:17px}.abtn .x{display:inline}.abtn.on .x{display:none}
+.abtn.on{color:var(--accent);border-color:color-mix(in srgb, var(--accent) 50%, transparent);background:color-mix(in srgb, var(--accent) 10%, transparent)}
 .coinpill i{width:10px;height:10px;border-radius:50%;background:var(--gold);box-shadow:inset 0 0 0 2px color-mix(in srgb, #000 18%, transparent)}
 .coinpill b{font-family:var(--font-mono);font-weight:500}
 .village{position:relative;height:330px;border-radius:var(--r) var(--r) 0 0;overflow:hidden;background:#0B1220}
@@ -270,6 +274,7 @@ canvas#chart{display:block;width:100%;height:290px;touch-action:pan-y}
       <div class="label">Rank</div>
       <div style="font-family:var(--font-display);font-size:18px" id="rankMini">Rookie</div>
       <div class="coinpill" style="margin-top:4px"><i></i><b id="coinVal">100</b> <span>coins</span></div>
+      <div class="abtns"><button class="abtn" id="hMusic" aria-label="Music" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/><path class="x" d="M3 3l18 18"/></svg></button><button class="abtn" id="hSfx" aria-label="Sound" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 010 7M19 5a10 10 0 010 14"/><path class="x" d="M3 3l18 18"/></svg></button></div>
     </div>
   </header>
 
@@ -685,7 +690,7 @@ function ensureChallenge(){
   return CHALLENGES.find(c=>c.id===S.ch.id);
 }
 function completeChallenge(){ if(S.ch.done) return false; S.ch.done=true; S.xp+=60; S.coins+=40; toast(trText("Aaj ka challenge mukammal: +60 XP")+" · +40 coins"); return true; }
-function award(id){ if(!S.badges.includes(id)){ S.badges.push(id); S.coins=(S.coins||0)+50; const b=BADGES.find(x=>x.id===id); toast(trText("Naya badge:")+" "+trText(b.name)+" · +50 coins"); } }
+function award(id){ if(!S.badges.includes(id)){ S.badges.push(id); sfx("coin"); S.coins=(S.coins||0)+50; const b=BADGES.find(x=>x.id===id); toast(trText("Naya badge:")+" "+trText(b.name)+" · +50 coins"); } }
 
 /* Stage clear: returns true and opens a celebration if every target of the current stage is met */
 function checkStage(then){
@@ -900,19 +905,101 @@ const heartSVG = on=>`<svg viewBox="0 0 24 24" class="${on?'':'lost'}" aria-hidd
 const ri = (a,b)=> a+Math.floor(Math.random()*(b-a+1));
 
 /* ---- sound (WebAudio, starts after first tap) ---- */
-let AC=null;
+/* ================== AUDIO: sound effects + generative background music ==================
+   Everything is synthesised with Web Audio at runtime: no audio files, no licences, ~0 KB download.
+   S.mute = sound effects off. S.music = background music on (off by default; browsers only allow
+   audio after the player taps, so music starts on the first tap after it is switched on). */
+let AC=null, SFXBUS=null, MUSBUS=null;
+function audioCtx(){
+  if(!AC){ AC = new (window.AudioContext||window.webkitAudioContext)();
+    const comp=AC.createDynamicsCompressor(); comp.threshold.value=-18; comp.ratio.value=3; comp.connect(AC.destination);
+    SFXBUS=AC.createGain(); SFXBUS.gain.value=.9; SFXBUS.connect(comp);
+    MUSBUS=AC.createGain(); MUSBUS.gain.value=0; MUSBUS.connect(comp); }
+  if(AC.state==="suspended") AC.resume();
+  return AC;
+}
+function tone(f, t, d, o={}){
+  const a=AC, osc=a.createOscillator(), g=a.createGain(), lp=a.createBiquadFilter();
+  osc.type=o.type||"sine"; osc.frequency.setValueAtTime(f,t); if(o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t+d);
+  lp.type="lowpass"; lp.frequency.value=o.lp||5200;
+  const v=o.v||.14; g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(v,t+(o.a||.008)); g.gain.exponentialRampToValueAtTime(.0001,t+d);
+  osc.connect(lp); lp.connect(g); g.connect(o.bus||SFXBUS); osc.start(t); osc.stop(t+d+.05);
+}
+function noise(t, d, o={}){
+  const a=AC, len=Math.floor(a.sampleRate*d), buf=a.createBuffer(1,len,a.sampleRate), ch=buf.getChannelData(0);
+  for(let i=0;i<len;i++) ch[i]=Math.random()*2-1;
+  const src=a.createBufferSource(), f=a.createBiquadFilter(), g=a.createGain(); src.buffer=buf;
+  f.type=o.ft||"bandpass"; f.frequency.setValueAtTime(o.f||1200,t); if(o.to) f.frequency.exponentialRampToValueAtTime(o.to,t+d); f.Q.value=o.q||1;
+  g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(o.v||.08,t+(o.a||.01)); g.gain.exponentialRampToValueAtTime(.0001,t+d);
+  src.connect(f); f.connect(g); g.connect(SFXBUS); src.start(t); src.stop(t+d+.02);
+}
+const SFX = {
+  tap:  t=>{ tone(1320,t,.045,{v:.045,type:"triangle"}); },
+  step: t=>{ tone(540,t,.06,{v:.1}); },
+  ok:   t=>{ tone(660,t,.08); tone(990,t+.06,.14,{v:.12}); },
+  combo:t=>{ tone(880,t,.06); tone(1175,t+.05,.08); tone(1568,t+.1,.16,{v:.1}); },
+  bad:  t=>{ tone(220,t,.22,{type:"triangle",to:150,v:.16,lp:900}); },
+  coin: t=>{ tone(1568,t,.07,{type:"square",v:.05,lp:3000}); tone(2093,t+.06,.22,{type:"square",v:.05,lp:3000}); },
+  open: t=>{ noise(t,.18,{f:500,to:2600,v:.05,q:.8}); tone(392,t+.02,.12,{type:"triangle",v:.09}); tone(587,t+.08,.18,{type:"triangle",v:.09}); },
+  close:t=>{ noise(t,.14,{f:2400,to:600,v:.04}); tone(523,t,.14,{type:"triangle",v:.08}); },
+  cash: t=>{ [784,988,1175,1568].forEach((f,i)=>tone(f,t+i*.055,.22,{v:.09,type:"triangle"})); noise(t+.2,.25,{f:6000,ft:"highpass",v:.025}); },
+  stop: t=>{ tone(330,t,.25,{type:"sine",to:220,v:.13,lp:700}); tone(165,t,.3,{v:.08,lp:400}); },
+  win:  t=>{ [523,659,784,1046].forEach((f,i)=>tone(f,t+i*.1,i===3?.45:.14,{type:"triangle",v:.12})); tone(1046,t+.3,.5,{v:.05}); },
+  lose: t=>{ [392,330,262].forEach((f,i)=>tone(f,t+i*.15,i===2?.4:.16,{type:"triangle",v:.11,lp:1400})); },
+  level:t=>{ [392,523,659,784,1046,1318].forEach((f,i)=>tone(f,t+i*.07,.4,{type:"triangle",v:.08})); noise(t+.35,.6,{f:7000,ft:"highpass",v:.02}); },
+  bell: t=>{ tone(528,t,1.6,{v:.07,a:.02}); tone(1056,t,1.1,{v:.025,a:.02}); },
+  sheet:t=>{ noise(t,.12,{f:900,to:2200,v:.025,q:.6}); }
+};
+let lastTap=0;
 function sfx(k){
   if(S.mute) return;
-  try{
-    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
-    const seq = {ok:[[660,.07],[880,.1]], step:[[540,.05]], bad:[[190,.2,"square"]], combo:[[880,.06],[1175,.12]],
-      win:[[523,.11],[659,.11],[784,.11],[1046,.3]], lose:[[392,.16],[330,.16],[262,.32]]}[k];
-    let t = AC.currentTime;
-    seq.forEach(([f,d,type])=>{ const o=AC.createOscillator(), g=AC.createGain(); o.type=type||"sine"; o.frequency.value=f;
-      g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.16,t+.012); g.gain.exponentialRampToValueAtTime(.0001,t+d);
-      o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+d+.03); t+=d*.9; });
-  }catch(e){}
+  try{ audioCtx(); const f=SFX[k]; if(!f) return; if(k==="tap"){ const n=performance.now(); if(n-lastTap<60) return; lastTap=n; } f(AC.currentTime+.005); }catch(e){}
 }
+
+/* ---- generative ambient music: calm lo-fi pads, soft bass, light arpeggio. Mood "market" adds a pulse. ---- */
+const MUS = { on:false, timer:null, next:0, step:0, mood:"home" };
+const CHORDS = [[57,60,64,67],[53,57,60,64],[48,52,55,59],[55,59,62,64]]; // Am7  Fmaj7  Cmaj7  G6
+const midi = n => 440*Math.pow(2,(n-69)/12);
+function musicTick(){
+  if(!MUS.on||!AC) return;
+  const beat = 60/72/2; // eighth notes at 72 bpm
+  while(MUS.next < AC.currentTime + .25){
+    const t=MUS.next, s=MUS.step, bar=Math.floor(s/16)%CHORDS.length, ch=CHORDS[bar], pos=s%16;
+    if(pos===0){ ch.forEach((n,i)=>tone(midi(n), t+i*.03, beat*16, {type:"triangle", v:.03, a:1.2, lp:900, bus:MUSBUS}));
+                 tone(midi(ch[0]-12), t, beat*7, {v:.07, a:.05, lp:300, bus:MUSBUS}); }
+    if(pos===8) tone(midi(ch[0]-12+7), t, beat*7, {v:.05, a:.05, lp:300, bus:MUSBUS});
+    const arp = MUS.mood==="market"? [0,3,6,10,12] : [0,6,12];
+    if(arp.includes(pos)){ const n=ch[(pos/3|0)%4]+12; tone(midi(n), t, beat*3, {type:"sine", v:MUS.mood==="market"?.028:.022, a:.01, lp:2400, bus:MUSBUS}); }
+    if(MUS.mood==="market" && pos%4===2) noise(t, .05, {f:8000, ft:"highpass", v:.008});
+    MUS.next += beat; MUS.step++;
+  }
+}
+function musicStart(){
+  if(!S.music || MUS.on || document.hidden) return;
+  try{ audioCtx(); MUS.on=true; MUS.next=AC.currentTime+.1;
+    MUSBUS.gain.cancelScheduledValues(AC.currentTime); MUSBUS.gain.setValueAtTime(MUSBUS.gain.value,AC.currentTime); MUSBUS.gain.linearRampToValueAtTime(.55, AC.currentTime+2.5);
+    MUS.timer=setInterval(musicTick, 90); musicTick(); }catch(e){}
+}
+function musicStop(fast){
+  if(!MUS.on) return; MUS.on=false; clearInterval(MUS.timer);
+  try{ MUSBUS.gain.cancelScheduledValues(AC.currentTime); MUSBUS.gain.setValueAtTime(MUSBUS.gain.value,AC.currentTime); MUSBUS.gain.linearRampToValueAtTime(0, AC.currentTime+(fast?.15:.8)); }catch(e){}
+}
+function musicMood(m){ MUS.mood=m; }
+function musicDuck(on){ if(!AC||!MUS.on) return; try{ MUSBUS.gain.setTargetAtTime(on? .15 : .55, AC.currentTime, .4); }catch(e){} }
+function setMusic(v){ S.music=v; save(); if(v) musicStart(); else musicStop(); syncAudioBtns(); }
+function setSfx(on){ S.mute=!on; save(); if(on) sfx("ok"); syncAudioBtns(); }
+function syncAudioBtns(){
+  const m=$("#hMusic"), s=$("#hSfx");
+  if(m){ m.classList.toggle("on", !!S.music); m.setAttribute("aria-pressed", !!S.music); m.title=S.music? L("Music band karo","Turn music off") : L("Music chalao","Turn music on"); }
+  if(s){ s.classList.toggle("on", !S.mute); s.setAttribute("aria-pressed", !S.mute); s.title=S.mute? L("Awaaz on karo","Turn sound on") : L("Awaaz band karo","Turn sound off"); }
+  const pm=$("#pMute"); if(pm) pm.textContent = S.mute? "Awaaz band":"Awaaz on";
+}
+document.addEventListener("pointerdown", e=>{
+  if(S.music && !MUS.on) musicStart();
+  const b=e.target.closest && e.target.closest(".btn,.chip,.opt,.lesson-item,.node");
+  if(b && !b.disabled && !b.matches("#hSfx,#hMusic")) sfx("tap");
+}, {passive:true});
+document.addEventListener("visibilitychange", ()=>{ if(document.hidden) musicStop(true); else if(S.music) musicStart(); });
 function buzz(ms){ try{ navigator.vibrate && navigator.vibrate(ms); }catch(e){} }
 function confetti(){
   if(matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -1286,7 +1373,7 @@ function settingsSheet(){
       ${p? `<p style="font-size:14px"><b>${esc(p.name)}</b> · ${esc(p.email)} · ${L("Umar","Age")} ${p.age}</p>` : ""}
       <button class="btn ghost block" id="sProf">${L("Player card badlo","Edit player card")}</button></div>
     <div class="stack" style="gap:6px"><span class="label">${L("Awaaz","Sound")}</span>
-      <button class="btn ghost block" id="sMute">${S.mute? L("Awaaz on karo","Turn sound on") : L("Awaaz band karo","Turn sound off")}</button></div>
+      <div class="row"><button class="btn ${!S.mute?"primary":"ghost"}" id="sMute" style="flex:1">${L("Effects","Effects")}: ${S.mute?"Off":"On"}</button><button class="btn ${S.music?"primary":"ghost"}" id="sMusic" style="flex:1">${L("Music","Music")}: ${S.music?"On":"Off"}</button></div></div>
     <button class="btn ghost block" id="sHow">${L("Kaise khelein?","How to play?")}</button>`);
   $("#x").onclick=closeSheet;
   $("#sUr").onclick=()=>{ if(S.lang!=="ur") setLang("ur"); };
@@ -1294,7 +1381,8 @@ function settingsSheet(){
   $("#sProf").onclick=profileSheet;
   $("#sDark").onclick=()=>{ S.theme="dark"; save(); document.documentElement.dataset.theme="dark"; settingsSheet(); };
   $("#sLight").onclick=()=>{ S.theme="light"; save(); document.documentElement.dataset.theme="light"; settingsSheet(); };
-  $("#sMute").onclick=()=>{ S.mute=!S.mute; save(); settingsSheet(); };
+  $("#sMute").onclick=()=>{ setSfx(S.mute); settingsSheet(); };
+  $("#sMusic").onclick=()=>{ setMusic(!S.music); settingsSheet(); };
   $("#sHow").onclick=()=>howto(false);
   $("#sTrack").onclick=()=>trackSheet(settingsSheet);
 }
@@ -1663,7 +1751,7 @@ function openPos(){
   const sl = stopPct? price*(1-dir*stopPct) : null;
   const tpR = F.tp()? sel.tp : 0, tp = tpR? price*(1+dir*sizing*tpR) : null;
   T.pos = {dir, entry:price, units, sl, tp, tpR, risk:sel.risk, at:T.idx};
-  T.st.trades++; S.tot.trades++; award("first");
+  T.st.trades++; S.tot.trades++; sfx("open"); award("first");
   T.st.maxRisk = Math.max(T.st.maxRisk, sel.risk);
   const notes=[]; let mood="good";
   if(stopPct){ addDisc(8); S.tot.stops++; T.st.stopTrades++; if(S.tot.stops>=10) award("belt"); notes.push("Stop laga diya, shabash."); if(sel.risk<=2) T.st.lowRisk++; }
@@ -1690,6 +1778,7 @@ function closePos(price, why){
   setBal(Math.max(0, bal()+pl)); T.pos=null;
   if(T.ch) chRecord(p, price, pl, why);
   if(T.demo){ S.demo.hist.unshift({t:Date.now(), name:D.name, dp:D.dp, dir:p.dir, entry:p.entry, exit:price, pl, why, risk:p.risk}); S.demo.hist=S.demo.hist.slice(0,100); }
+  sfx(why==="tp"?"cash":why==="sl"?"stop":"close");
   if(why==="sl"){ addDisc(3); T.st.slHits++; coach(`Stop hit: ${fmt$(pl)}. Plan ne aapko bara nuksaan se bachaya. Ab saans lo, revenge nahi.`); }
   else if(why==="tp"){ addDisc(5); T.st.tpHits++; S.tot.tps++; if(p.tpR>=2) T.st.bigTp++; award("fruit"); addCalm(5); coach(`Target hit: +${fmt$(pl)}. Sabr ka phal.`,"good"); }
   else if(why==="manual") coach(pl>=0? `Position band: ${fmt$(pl)} profit. Theek hai, lekin target tak sabr bhi ek hunar hai.` : `Position band: ${fmt$(pl)}. Chhota nuksaan qubool karna bhi samajhdari hai.`, pl>=0?"good":"");
@@ -1772,7 +1861,7 @@ function endDay(){
 }
 function afterDay(before){
   T=null; D=null; show("home"); renderHome();
-  const rankUp=()=>{ const now=rankIdx(S.xp); if(now>before){ if(now>=5) award("legend"); save(); renderHome();
+  const rankUp=()=>{ const now=rankIdx(S.xp); if(now>before){ sfx("level"); if(now>=5) award("legend"); save(); renderHome();
       openSheet(`<span class="pill gold">Rank up</span><h2><span>Mubarak ho! Aap ab</span> <span>${RANKS[now].name}</span> <span>ho</span></h2><p><span>${RANKS[now].ur}.</span> <span>XP se rank barhta hai, stages se naye hunar khulte hain.</span></p><button class="btn primary block" id="ok">Shukriya</button>`);
       $("#ok").onclick=()=>{ closeSheet(); broke(); }; } else broke(); };
   const broke=()=>{ if(S.bal<2000){
@@ -1856,15 +1945,15 @@ function breathe(fromMarket){
     <button class="btn ghost block" id="bSkip">Abhi nahi</button>`);
   const orb=$("#orb"), phases=[["Saans andar",1],["Roko",1],["Saans bahar",.55],["Roko",.55]];
   let k=0, sec=4, cancelled=false, iv=null;
-  const done=(full)=>{ cancelled=true; clearInterval(iv); closeSheet();
+  const done=(full)=>{ cancelled=true; clearInterval(iv); closeSheet(); musicDuck(false);
     if(full){ S.tot.breaths++; if(S.tot.breaths>=10) award("breath10");
       if(fromMarket && T){ T.breathSince=true; addCalm(20); T.breathsDay++; if(T.breathsDay<=3) addDisc(4); coach("Saans ke baad dimagh saaf hai. Ab plan ke saath faisla karo.","good"); renderMarket(); }
       else toast("Shabash. Thanda dimagh, behtar faisle.");
       save(); }
     if(wasRunning && T && !T.over) run(); };
   const set=()=>{ const p=phases[k%4]; orb.textContent=p[0]+" · "+sec; orb.style.transform=`scale(${p[1]})`; };
-  set();
-  iv=setInterval(()=>{ if(cancelled) return; sec--; if(sec<=0){ k++; sec=4; if(k>=8){ done(true); return; } } set(); },1000);
+  set(); musicDuck(true); sfx("bell");
+  iv=setInterval(()=>{ if(cancelled) return; sec--; if(sec<=0){ k++; sec=4; if(k>=8){ done(true); return; } if(k%4===0) sfx("bell"); } set(); },1000);
   $("#bSkip").onclick=()=>done(false);
 }
 
@@ -1934,7 +2023,7 @@ function howto(first){
 }
 
 /* ================== PLUMBING ================== */
-function show(id){ if(id!=="play" && G && !G.done) quitLevel(true); $$(".screen").forEach(s=>s.hidden = s.id!==id); window.scrollTo(0,0); worldOnShow(id); if(id==="market") requestAnimationFrame(draw); }
+function show(id){ musicMood(id==="market"||id==="play"? "market" : "home"); if(id!=="play" && G && !G.done) quitLevel(true); $$(".screen").forEach(s=>s.hidden = s.id!==id); window.scrollTo(0,0); worldOnShow(id); if(id==="market") requestAnimationFrame(draw); }
 function openSheet(html){ $("#sheet").innerHTML=html; $("#overlay").hidden=false; $("#sheet").scrollTop=0; }
 function closeSheet(){ clearInterval(animTimer); $("#overlay").hidden=true; $("#sheet").innerHTML=""; }
 let toastT=null;
@@ -1943,7 +2032,7 @@ function toast(m){ const t=$("#toast"); t.textContent=m; t.hidden=false; clearTi
 /* ================== PHASE 1: COINS, 3D VILLAGE, 3D HOME, CHARACTER ================== */
 /* Three separate progressions: S.xp (learning), S.coins (lifestyle), S.demo.bal (practice trading). Never mixed. */
 function addCoins(n, why){
-  if(!n) return; S.coins=(S.coins||0)+n; save();
+  if(!n) return; S.coins=(S.coins||0)+n; save(); sfx("coin");
   toast(L(`+${n} coins${why?" · "+why:""}`, `+${n} coins${why?" · "+trText(why):""}`));
   const c=$("#coinVal"); if(c) c.textContent=S.coins.toLocaleString("en-US");
 }
@@ -2668,7 +2757,10 @@ $("#btnLessons").onclick = lessonsList;
 $("#btnPuzzle").onclick = showMap;
 $("#mapBack").onclick = ()=>{ show("home"); renderHome(); };
 $("#pBack").onclick = ()=>quitLevel(false);
-$("#pMute").onclick = ()=>{ S.mute=!S.mute; save(); $("#pMute").textContent = S.mute? "Awaaz band":"Awaaz on"; if(!S.mute) sfx("ok"); };
+$("#pMute").onclick = ()=>{ setSfx(S.mute); };
+$("#hMusic").onclick = ()=>{ setMusic(!S.music); toast(S.music? L("Music on. Halki si dhun.","Music on. Soft and calm.") : L("Music band","Music off")); };
+$("#hSfx").onclick = ()=>{ setSfx(S.mute); };
+syncAudioBtns();
 $("#mapOwl").innerHTML = owlSVG();
 document.querySelector("#map .topbar .stars").innerHTML = starSVG(true);
 $("#btnBadges").onclick = badgesSheet;
