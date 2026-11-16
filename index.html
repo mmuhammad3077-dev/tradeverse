@@ -1289,7 +1289,7 @@ function setLang(l){ S.lang=l; save(); try{ location.reload(); }catch(e){} }
 
 /* ================== SIGNUP / PROFILE ================== */
 /* Paste the Google Apps Script web app URL here (see README.md). Empty = profile stays only on this device. */
-const SIGNUP_URL = "https://script.google.com/macros/s/AKfycbwbIEUaZV0Le6o4LGmP_0Vlkf7ypAvzWDJs7BeAk8HTuqU9eB4HBiuIFBUMIGY2Ra2G/exec";
+const SIGNUP_URL = "https://script.google.com/macros/s/AKfycbxk24FJsS7OnJB4HXjf2dODQODCwhWppNgE5y1MI7Fgj1NXWQMFq4uRT1wPvlbbm4yq2Q/exec";
 function progressInfo(){ return {lang:S.lang, app:"sukoon-market", stage:S.stage+1, xp:S.xp, rank:RANKS[rankIdx(S.xp)].name, coins:S.coins||0,
   days:S.day||0, stars:Object.values(S.lv||{}).reduce((a,b)=>a+b,0), badges:(S.badges||[]).length, streak:S.streak||0,
   academy:S.acad&&S.acad.unlocked? "open":"locked", readiness:S.acad? readiness().total:0, challenge:S.acad&&S.acad.ch.active? S.acad.ch.active.id+" in progress" : (S.acad&&S.acad.certs.length? S.acad.certs.map(c=>c.id).join(",")+" passed" : "-")}; }
