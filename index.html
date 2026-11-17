@@ -369,6 +369,30 @@ canvas#chart{display:block;width:100%;height:290px;touch-action:pan-y}
 .sx-teaser small{display:block;font:500 10px var(--font-mono);letter-spacing:.1em;color:#E3B04B;text-transform:uppercase}
 .sx-teaser b{font-family:var(--font-display);font-size:15px;display:block}
 .sx-teaser span,.sx-note{font-size:12px;color:#A3B0C4}
+
+/* World tabs */
+#home{padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+.tabp[hidden]{display:none!important}
+.tabh{font-family:var(--font-display);font-size:22px;margin:4px 0 0}
+.city{position:relative;border-radius:8px;overflow:hidden;aspect-ratio:9/14;background:#060a12;border:1px solid rgba(255,255,255,.08)}
+.city>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cityfade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,7,12,.1) 0%,rgba(4,7,12,0) 40%,rgba(4,7,12,.75) 100%);pointer-events:none}
+.citycap{position:absolute;left:14px;right:14px;bottom:12px;display:flex;flex-direction:column;gap:2px;color:#EEF2F8;pointer-events:none}
+.citycap b{font-family:var(--font-display);font-size:18px}.citycap span:last-child{font-size:12px;color:#A3B0C4}
+.pin{position:absolute;transform:translate(-50%,-50%);appearance:none;border:0;background:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;z-index:2}
+.pin i{width:12px;height:12px;border-radius:50%;background:#E3B04B;box-shadow:0 0 0 4px rgba(227,176,75,.25),0 0 14px rgba(227,176,75,.7);flex:none;animation:pinp 2.4s ease-in-out infinite}
+.pin span{display:flex;flex-direction:column;align-items:flex-start;background:rgba(6,10,18,.8);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(4px);border-radius:5px;padding:4px 8px;text-align:left;white-space:nowrap}
+.pin b{font:600 11.5px var(--font-display);color:#EEF2F8;letter-spacing:.02em}.pin small{font:500 9.5px var(--font-mono);color:#A3B0C4;text-transform:uppercase;letter-spacing:.06em}
+.pin[data-b="tower"] i{background:#F2C76B}.pin[data-b="tower"] span{border-color:rgba(227,176,75,.6)}
+.pin.r{flex-direction:row-reverse}.pin.r span{align-items:flex-end;text-align:right}
+.pin:focus-visible span,.pin:hover span{border-color:#E3B04B}
+@keyframes pinp{50%{box-shadow:0 0 0 7px rgba(227,176,75,.12),0 0 18px rgba(227,176,75,.9)}}
+@media (prefers-reduced-motion:reduce){.pin i{animation:none}}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(5,1fr);max-width:520px;margin:0 auto;background:rgba(8,12,20,.94);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.1);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}
+.tabbar button{appearance:none;border:0;background:none;color:#7F8BA0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 0;cursor:pointer;font:500 10.5px var(--font-body);min-height:48px}
+.tabbar svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tabbar button.on{color:#E3B04B}
+.tabbar button:focus-visible{outline:2px solid #E3B04B;outline-offset:-2px;border-radius:6px}
 </style>
 </head>
 <body>
@@ -388,22 +412,18 @@ canvas#chart{display:block;width:100%;height:290px;touch-action:pan-y}
       <div class="abtns"><button class="abtn" id="hMusic" aria-label="Music" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/><path class="x" d="M3 3l18 18"/></svg></button><button class="abtn" id="hSfx" aria-label="Sound" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 010 7M19 5a10 10 0 010 14"/><path class="x" d="M3 3l18 18"/></svg></button></div>
     </div>
   </header>
-
+  <div class="tabp stack" data-tab="world">
+  <div class="city" id="city"><img id="cityImg" src="img/bg-home.jpg" alt="TradeVerse shehar"><div class="cityfade"></div><button class="pin" data-b="pro" style="left:54%;top:13%"><i></i><span><b>Pro District</b><small>Funded safar</small></span></button><button class="pin" data-b="challenge" style="left:24%;top:31%"><i></i><span><b>Challenge District</b><small>Discipline</small></span></button><button class="pin" data-b="intel" style="left:68%;top:38%"><i></i><span><b>Intelligence District</b><small>Jald</small></span></button><button class="pin" data-b="market" style="left:74%;top:58%"><i></i><span><b>Market District</b><small>Trade · Demo Bank</small></span></button><button class="pin" data-b="academy" style="left:24%;top:56%"><i></i><span><b>Academy District</b><small>Seekho</small></span></button><button class="pin" data-b="newt" style="left:50%;top:76%"><i></i><span><b>New Trader District</b><small>Mera kamra · Kahani</small></span></button>
+    <div class="citycap"><span class="label" style="color:#E3B04B">TradeVerse City</span><b>Enter the World of Trading</b><span>Kisi building par tap karo</span></div></div>
+  <button class="btn primary block" id="btnToday" style="min-height:52px"><span>Aaj ka kaam</span></button>
   <button class="funded" id="fundedCard" aria-label="Mera Funded Safar">
     <div class="top"><div><span class="label" style="color:var(--gold)">Mera Funded Safar</span><div style="font-family:var(--font-display);font-size:17px;font-weight:600">Funded trader banne ka raasta</div></div><span class="pct" id="fundPct">0%</span></div>
     <div class="fsteps" id="fundSteps"></div>
     <div class="fnext" id="fundNext"></div>
   </button>
-
-  <div class="hero" id="hero" style="background-image:url(img/bg-home.jpg)">
-    <div class="in">
-      <span class="label" id="heroLbl">Kahani · Chapter 1</span>
-      <h2 id="heroTitle">Pehla Account</h2>
-      <p id="heroTxt">Kiraye ka kamra, $480, aur aik dost ka "100% sure shot" signal. Tum kya karo ge?</p>
-      <button class="btn primary" id="btnStory" style="min-height:50px">Kahani shuru karo</button>
-    </div>
   </div>
-
+  <div class="tabp stack" data-tab="markets" hidden>
+  <h2 class="tabh">Markets</h2>
   <div class="card stage-card">
     <div class="row between">
       <span class="label" id="stageNo">Stage 1 / 7</span>
@@ -415,7 +435,41 @@ canvas#chart{display:block;width:100%;height:290px;touch-action:pan-y}
     <div class="stack" style="gap:10px" id="targets"></div>
     <button class="btn primary block" id="btnPlay" style="min-height:56px;font-size:16px">Shuru karo</button>
   </div>
-
+  <div class="stats">
+    <div class="stat"><span class="label">Virtual balance</span><b id="stBal">$10,000</b></div>
+    <div class="stat"><span class="label">Sabr streak</span><b id="stStreak">0</b></div>
+    <div class="stat"><span class="label">Market din</span><b id="stDay">0</b></div>
+  </div>
+  <div class="menu"><button class="btn" id="btnDemo"><span>Demo Account</span><small id="demoInfo">$10,000 free practice</small></button><button class="btn locked" id="btnReal"><span>Real Market Mode</span><small id="realInfo">Stage 6 ke baad</small></button></div>
+  </div>
+  <div class="tabp stack" data-tab="academy" hidden>
+  <h2 class="tabh">Academy</h2>
+  <div class="hero" id="hero" style="background-image:url(img/bg-home.jpg)">
+    <div class="in">
+      <span class="label" id="heroLbl">Kahani · Chapter 1</span>
+      <h2 id="heroTitle">Pehla Account</h2>
+      <p id="heroTxt">Kiraye ka kamra, $480, aur aik dost ka "100% sure shot" signal. Tum kya karo ge?</p>
+      <button class="btn primary" id="btnStory" style="min-height:50px">Kahani shuru karo</button>
+    </div>
+  </div>
+  <div class="menu"><button class="btn" id="btnLessons"><span>Sabaq</span><small id="lessonsInfo">Lessons aur quiz</small></button><button class="btn" id="btnPuzzle"><span>Safar ka Naqsha</span><small id="mapInfo">Levels aur stars</small></button><button class="btn" id="btnBreathHome"><span>Saans lo</span><small>Box breathing, 32 sec</small></button><button class="btn" id="btnStory2"><span>Kahani</span><small>Chapter 1 · Pehla Account</small></button><button class="btn" id="btnAcad" style="grid-column:1 / -1"><span>Funded Trader Academy</span><small id="acadInfo">Pro rank ke baad</small></button></div>
+  </div>
+  <div class="tabp stack" data-tab="compete" hidden>
+  <h2 class="tabh">Compete</h2>
+  <div class="card challenge">
+    <div class="tick" id="chTick"></div>
+    <div style="min-width:0">
+      <div class="label">Aaj ka challenge</div>
+      <div id="chText" style="font-weight:500"></div>
+      <div class="muted" style="font-size:13px">Inaam: +60 XP · +40 coins</div>
+    </div>
+  </div>
+  <div class="card stack" style="gap:8px"><span class="pill" style="align-self:flex-start">Release 2</span><h3>Challenge Arena</h3>
+    <p class="muted" style="font-size:14px">Yahan competitions aayengi jin mein jeet sirf sab se zyada profit se nahi, balkay risk control, discipline aur consistency se hogi. Har competition ke rules pehle saaf likhe hon ge.</p></div>
+  <div class="menu"><button class="btn" id="btnBadges"><span>Badges</span><small id="badgesInfo">0 / 0</small></button></div>
+  </div>
+  <div class="tabp stack" data-tab="profile" hidden>
+  <h2 class="tabh">Profile</h2>
   <div class="card rank-card">
     <div class="row between">
       <div>
@@ -432,22 +486,6 @@ canvas#chart{display:block;width:100%;height:290px;touch-action:pan-y}
     <div class="muted" style="font-size:13px" id="xpNext"></div>
     <div class="ladder" id="ladder"></div>
   </div>
-
-  <div class="stats">
-    <div class="stat"><span class="label">Virtual balance</span><b id="stBal">$10,000</b></div>
-    <div class="stat"><span class="label">Sabr streak</span><b id="stStreak">0</b></div>
-    <div class="stat"><span class="label">Market din</span><b id="stDay">0</b></div>
-  </div>
-
-  <div class="card challenge">
-    <div class="tick" id="chTick"></div>
-    <div style="min-width:0">
-      <div class="label">Aaj ka challenge</div>
-      <div id="chText" style="font-weight:500"></div>
-      <div class="muted" style="font-size:13px">Inaam: +60 XP · +40 coins</div>
-    </div>
-  </div>
-
   <div class="card life" id="lifeCard">
     <img id="lifeThumb" src="img/life-1.jpg" alt="Abhi ka ghar">
     <div class="stack" style="gap:6px;min-width:0">
@@ -457,21 +495,16 @@ canvas#chart{display:block;width:100%;height:290px;touch-action:pan-y}
       <button class="btn ghost" id="btnLife" style="min-height:40px;font-size:13px;align-self:flex-start">Upgrade dekho</button>
     </div>
   </div>
-
-  <div class="menu">
-    <button class="btn" id="btnLessons"><span>Sabaq</span><small id="lessonsInfo">Lessons aur quiz</small></button>
-    <button class="btn" id="btnPuzzle"><span>Safar ka Naqsha</span><small id="mapInfo">Levels aur stars</small></button>
-    <button class="btn" id="btnBadges"><span>Badges</span><small id="badgesInfo">0 / 0</small></button>
-    <button class="btn" id="btnBreathHome"><span>Saans lo</span><small>Box breathing, 32 sec</small></button>
-    <button class="btn" id="btnDemo"><span>Demo Account</span><small id="demoInfo">$10,000 free practice</small></button>
-    <button class="btn" id="btnAcad" style="grid-column:1 / -1"><span>Funded Trader Academy</span><small id="acadInfo">Pro rank ke baad</small></button>
-    <button class="btn" id="btnRoom"><span>Meri Zindagi</span><small>Kamre se Empire Tower tak</small></button>
-    <button class="btn" id="btnStory2"><span>Kahani</span><small>Chapter 1 · Pehla Account</small></button>
-    <button class="btn" id="btnHowto"><span>Settings</span><small>Zabaan, player card, awaaz</small></button>
-    <button class="btn locked" id="btnReal" style="grid-column:1 / -1"><span>Real Market Mode</span><small id="realInfo">Stage 6 ke baad</small></button>
+  <div class="menu"><button class="btn" id="btnRoom"><span>Meri Zindagi</span><small>Kamre se Empire Tower tak</small></button><button class="btn" id="btnHowto"><span>Settings</span><small>Zabaan, player card, awaaz</small></button></div>
   </div>
-
   <p class="disclaimer">Ye sirf ek simulation game hai. Is mein asli paisa nahi lagta aur ye financial advice nahi hai.</p>
+  <nav class="tabbar" id="tabbar">
+    <button data-t="world" class="on"><svg viewBox="0 0 24 24"><path d="M3 21V10l5-3v14M8 21V4l7 3v14M15 21v-9l6-2v11M2 21h20"/></svg><span>World</span></button>
+    <button data-t="markets"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15l3-4 3 2 5-6"/></svg><span>Markets</span></button>
+    <button data-t="academy"><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5"/></svg><span>Academy</span></button>
+    <button data-t="compete"><svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 01-8 0zM8 6H4a3 3 0 004 4M16 6h4a3 3 0 01-4 4M12 13v4M8 21h8"/></svg><span>Compete</span></button>
+    <button data-t="profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg><span>Profile</span></button>
+  </nav>
 </section>
 
 <!-- MARKET -->
@@ -1679,7 +1712,7 @@ function renderHome(){
   $("#xpNext").innerHTML = nxt? `<span>${(nxt.xp-S.xp).toLocaleString("en-US")} XP aur, phir</span> <b>${nxt.name}</b>` : "Aap Legend ho. Safar phir bhi jaari hai.";
   $("#ladder").innerHTML = RANKS.map((k,i)=>`<span class="${i<=r?'on':''}">${k.name}</span>`).join("");
   $("#stBal").textContent = fmt$(S.bal); $("#stStreak").textContent = S.streak+" din"; $("#stDay").textContent = S.day;
-  try{ renderLifeCard(); renderHero(); renderFunded(); }catch(e){ console.warn(e); }
+  try{ renderLifeCard(); renderHero(); renderFunded(); renderToday(); }catch(e){ console.warn(e); }
   const ch = ensureChallenge();
   $("#chText").textContent = ch.t + (ch.id==="puzzle3" && !S.ch.done? ` (${Math.min(S.ch.puz||0,3)}/3)`:"");
   $("#chTick").className = "tick"+(S.ch.done?" done":""); $("#chTick").textContent = S.ch.done? "✓":"";
@@ -3435,6 +3468,16 @@ window.addEventListener("resize", ()=>draw());
 try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ()=>draw()); }catch(e){}
 new MutationObserver(()=>draw()).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
 document.addEventListener("visibilitychange", ()=>{ if(document.hidden && timer && T){ stop(); T.paused=true; $("#btnPause").textContent="Chalao"; } });
+
+const BLD={academy:()=>homeTab("academy"),market:()=>homeTab("markets"),challenge:()=>homeTab("compete"),pro:()=>fundedSheet(),
+  newt:()=>openSheet(`<div class="stack" style="gap:10px"><span class="label">New Trader District</span><h2>${L("Yahan se safar shuru hota hai","Where the journey starts")}</h2><button class="btn primary block" onclick="closeSheet();storyStart()">${L("Kahani · Chapter 1","Story · Chapter 1")}</button><button class="btn block" onclick="closeSheet();showRoom()">${L("Mera kamra (Meri Zindagi)","My room")}</button></div>`),
+  intel:()=>openSheet(`<div class="stack" style="gap:10px"><span class="pill" style="align-self:flex-start">${L("Jald","Soon")}</span><h2>Intelligence District</h2><p>${L("Market news, economic calendar aur research missions yahan aayengi. Abhi chart puzzles practice kar sakte ho.","Market news, economic calendar and research missions will live here. For now, practise chart puzzles.")}</p><button class="btn primary block" onclick="closeSheet();showMap()">${L("Chart puzzles kholo","Open chart puzzles")}</button></div>`)};
+function homeTab(t){ S.homeTab=t; save(); $$("#home .tabp").forEach(p=>p.hidden=p.dataset.tab!==t); $$("#tabbar button").forEach(b=>{b.classList.toggle("on",b.dataset.t===t); b.setAttribute("aria-current",b.dataset.t===t?"page":"false");}); window.scrollTo(0,0); }
+$$("#tabbar button").forEach(b=>b.onclick=()=>{ homeTab(b.dataset.t); try{sfx("tap")}catch(e){} });
+$$("#city .pin").forEach(b=>{ if(parseFloat(b.style.left)>60) b.classList.add("r"); b.onclick=()=>{ try{sfx("tap")}catch(e){} BLD[b.dataset.b](); }; });
+$("#btnToday").onclick=()=>nextAction().run();
+function renderToday(){ const a=nextAction(); $("#btnToday").innerHTML=`<span style="display:block;text-align:center"><small style="display:block;font:500 10px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;opacity:.75">${L("Aaj ka kaam","Today")}</small>${a.label.replace(/<\/?span>/g,"")}</span>`; }
+homeTab(S.homeTab||"world");
 
 startTranslator();
 renderHome();
