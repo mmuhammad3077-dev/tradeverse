@@ -371,6 +371,15 @@ canvas#chart{display:block;width:100%;height:290px;touch-action:pan-y}
 .sx-teaser span,.sx-note{font-size:12px;color:#A3B0C4}
 
 /* World tabs */
+.cast{display:flex;flex-direction:column;gap:8px}
+.castrow{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:4px;scrollbar-width:none}
+.castrow::-webkit-scrollbar{display:none}
+.castc{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:0;overflow:hidden;flex:0 0 112px;scroll-snap-align:start;cursor:pointer;text-align:left;color:var(--ink)}
+.castc img{width:100%;height:140px;object-fit:cover;object-position:50% 18%;display:block}
+.castc div{padding:7px 9px}.castc b{display:block;font:600 12.5px var(--font-display)}.castc small{display:block;font:500 9.5px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--gold)}
+.castc:focus-visible{outline:2px solid #E3B04B;outline-offset:2px}
+.castbig{width:100%;max-height:52vh;object-fit:cover;object-position:50% 15%;border-radius:8px}
+
 #home{padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
 .tabp[hidden]{display:none!important}
 .tabh{font-family:var(--font-display);font-size:22px;margin:4px 0 0}
@@ -421,6 +430,7 @@ canvas#chart{display:block;width:100%;height:290px;touch-action:pan-y}
     <div class="fsteps" id="fundSteps"></div>
     <div class="fnext" id="fundNext"></div>
   </button>
+  <div class="cast"><div class="row between"><span class="label">TradeVerse ke log</span><small class="muted" style="font-size:12px">Tap karo</small></div><div class="castrow" id="castRow"></div></div>
   </div>
   <div class="tabp stack" data-tab="markets" hidden>
   <h2 class="tabh">Markets</h2>
@@ -3478,6 +3488,16 @@ $$("#city .pin").forEach(b=>{ if(parseFloat(b.style.left)>60) b.classList.add("r
 $("#btnToday").onclick=()=>nextAction().run();
 function renderToday(){ const a=nextAction(); $("#btnToday").innerHTML=`<span style="display:block;text-align:center"><small style="display:block;font:500 10px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;opacity:.75">${L("Aaj ka kaam","Today")}</small>${a.label.replace(/<\/?span>/g,"")}</span>`; }
 homeTab(S.homeTab||"world");
+const CAST=[
+ {k:"rashid",img:"img/mentor.jpg",n:"Ustaad Rashid Malik",r:"Mentor",d:"New Trader District",t:L("Purane, thande dimagh ke trader. Pehla sabaq yahi dete hain: market jaldbaazi ka inaam nahi deti.","A calm veteran trader. His first lesson: the market does not reward impatience.")},
+ {k:"ayesha",img:"img/ayesha.jpg",n:"Ayesha Siddiqui",r:"Academy Instructor",d:"Academy District",t:L("Candles, trend, support aur resistance chhote chhote sabaq aur chart exercises se sikhati hain.","Teaches candles, trends, support and resistance through short lessons and chart exercises.")},
+ {k:"zain",img:"img/zain.jpg",n:"Zain Mirza",r:"Rival",d:"Challenge District",t:L("Talented magar jaldbaaz. Quick paisa chahta hai aur aap ko challenge karta rahe ga. Shayad aik din dost ban jaye.","Talented but impatient. Wants quick money and keeps challenging you. Maybe a friend one day.")},
+ {k:"sophia",img:"img/sophia.jpg",n:"Sophia Carter",r:"Analyst",d:"Intelligence District",t:L("News, economic calendar aur market context samjhati hain. Forecast ko kabhi pakki baat nahi samajhti.","Explains news, the economic calendar and market context, and never treats a forecast as certain.")},
+ {k:"victor",img:"img/victor.jpg",n:"Victor Hayes",r:"Risk Manager",d:"Pro District",t:L("Sakht aur seedhe. Drawdown, position size aur evaluation rules un ka shoba hai.","Strict and direct. Drawdown, position sizing and evaluation rules are his domain.")}];
+function renderCast(){ $("#castRow").innerHTML=CAST.map(c=>`<button class="castc" data-k="${c.k}"><img src="${c.img}" alt="${c.n}" loading="lazy"><div><small>${c.r}</small><b>${c.n}</b></div></button>`).join("");
+  $$("#castRow .castc").forEach(b=>b.onclick=()=>{ const c=CAST.find(x=>x.k===b.dataset.k); openSheet(`<div class="stack" style="gap:10px"><img class="castbig" src="${c.img}" alt="${c.n}"><span class="label" style="color:var(--gold)">${c.r} · ${c.d}</span><h2 style="margin:0">${c.n}</h2><p>${c.t}</p><button class="btn primary block" onclick="closeSheet()">${L("Theek hai","OK")}</button></div>`); }); }
+renderCast();
+
 
 startTranslator();
 renderHome();
