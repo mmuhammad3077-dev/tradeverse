@@ -291,6 +291,32 @@ canvas#chart{display:block;width:100%;height:290px;touch-action:pan-y}
 .ladder5 button.own{border-color:var(--gold)}
 .ladder5 button.sel{outline:2px solid var(--gold);outline-offset:2px}
 
+/* Funded Safar */
+.funded{display:flex;flex-direction:column;gap:10px;background:linear-gradient(135deg,color-mix(in srgb,var(--gold) 16%,var(--surface)),var(--surface) 60%);border:1px solid color-mix(in srgb,var(--gold) 45%,var(--line));border-radius:var(--r);padding:14px 16px;text-align:left;width:100%}
+.funded .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.funded .pct{font-family:var(--font-mono);font-size:26px;font-weight:500;color:var(--gold);font-variant-numeric:tabular-nums}
+.fsteps{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.fsteps i{height:6px;border-radius:2px;background:var(--surface-2);overflow:hidden;display:block}
+.fsteps i b{display:block;height:100%;background:var(--gold)}
+.fnext{font-size:13px;color:var(--muted)}
+.fnext b{color:var(--ink);font-weight:600}
+.fstep{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.fstep:first-child{border-top:none}
+.fstep .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:500 12px var(--font-mono);border:1.5px solid var(--line);color:var(--muted)}
+.fstep.done .n{background:var(--gold);border-color:var(--gold);color:var(--cta-ink)}
+.fstep .bar{height:5px;margin-top:5px}
+/* placement test */
+.qopts{display:flex;flex-direction:column;gap:8px}
+.qopts .btn{justify-content:flex-start;text-align:left;min-height:50px;background:var(--surface);border:1px solid var(--line);font-weight:500}
+.qopts .btn.right{border-color:var(--up);background:color-mix(in srgb,var(--up) 14%,var(--surface))}
+.qopts .btn.wrong{border-color:var(--down);background:color-mix(in srgb,var(--down) 14%,var(--surface))}
+.qbar{height:4px;border-radius:2px;background:var(--surface-2);overflow:hidden}
+.qbar i{display:block;height:100%;background:var(--gold)}
+.qchart{width:100%;max-width:100%;display:block;border-radius:8px;background:#05080F;border:1px solid var(--line)}
+.qres{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.qres div{background:var(--surface-2);border-radius:8px;padding:8px 10px}
+.qres b{display:block;font-family:var(--font-mono);font-size:16px}
+
 /* story mode (full screen, always dark, cinematic) */
 #story{position:fixed;inset:0;z-index:60;background:#000;display:flex;justify-content:center;color:#EEF2F8;font-family:var(--font-body)}
 .sx-stage{position:relative;width:100%;max-width:520px;height:100%;overflow:hidden;background:#000}
@@ -362,6 +388,12 @@ canvas#chart{display:block;width:100%;height:290px;touch-action:pan-y}
       <div class="abtns"><button class="abtn" id="hMusic" aria-label="Music" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/><path class="x" d="M3 3l18 18"/></svg></button><button class="abtn" id="hSfx" aria-label="Sound" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 010 7M19 5a10 10 0 010 14"/><path class="x" d="M3 3l18 18"/></svg></button></div>
     </div>
   </header>
+
+  <button class="funded" id="fundedCard" aria-label="Mera Funded Safar">
+    <div class="top"><div><span class="label" style="color:var(--gold)">Mera Funded Safar</span><div style="font-family:var(--font-display);font-size:17px;font-weight:600">Funded trader banne ka raasta</div></div><span class="pct" id="fundPct">0%</span></div>
+    <div class="fsteps" id="fundSteps"></div>
+    <div class="fnext" id="fundNext"></div>
+  </button>
 
   <div class="hero" id="hero" style="background-image:url(img/bg-home.jpg)">
     <div class="in">
@@ -1453,23 +1485,90 @@ function profileSheet(){
   });
 }
 function esc(v){ return String(v).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
-/* Experience decides the starting rank and stage */
+/* Placement: brand-new players start at the beginning; anyone else can take a 5-minute test to skip ahead */
 function placement(){
   const e=S.profile.exp, nm=esc(S.profile.name.split(" ")[0]);
-  const plan = {none:{xp:0, st:0}, little:{xp:100, st:0}, some:{xp:200, st:1}, pro:{xp:350, st:2}}[e];
-  S.xp=Math.max(S.xp, plan.xp); save();
-  const r=RANKS[rankIdx(S.xp)].name;
-  if(plan.st===0){
-    mentorSay([L(`Shukriya ${nm}! Aap ka shuruati rank: <b>${r}</b>.`,`Thanks ${nm}! Your starting rank: <b>${r}</b>.`),
-      L("Hum Candle Basti se shuru karenge. Chalo safar shuru karein!","We will start in Candle Basti. Let's begin the journey!")], L("Shuru karo","Start"), ()=>{ renderHome(); afterPlacement(); }, L("Player card tayyar","Player card ready"));
+  const go=()=>{ renderHome(); afterPlacement(); };
+  if(e==="none"){
+    mentorSay([L(`Shukriya ${nm}! Hum bilkul shuru se chalein ge, qadam ba qadam.`,`Thanks ${nm}! We will start right from the beginning, step by step.`),
+      L("Aap ka asal maqsad: Funded trader banna. Upar wala bar har qadam par barhe ga.","Your real goal: becoming a funded trader. The bar at the top grows with every step.")], L("Shuru karo","Start"), go, L("Player card tayyar","Player card ready"));
     return;
   }
-  const stName = STAGES[plan.st].name;
-  openSheet(`<div class="mentor">${owlSVG()}<div class="bubble">${L(`Shukriya ${nm}! Aap ke tajurbe ke hisaab se aap ka shuruati rank <b>${r}</b> hai.`,`Thanks ${nm}! Based on your experience, your starting rank is <b>${r}</b>.`)}
-    <br><br>${L(`Aap seedha <b>Stage ${plan.st+1}: ${stName}</b> se shuru kar sakte ho.`,`You can jump straight to <b>Stage ${plan.st+1}: ${trText(stName)}</b>.`)}</div></div>
-    <div class="row"><button class="btn ghost" id="plNo" style="flex:1">${L("Shuru se","From the start")}</button><button class="btn primary" id="plYes" style="flex:2">${L(`Stage ${plan.st+1} se`,`From Stage ${plan.st+1}`)}</button></div>`);
-  $("#plNo").onclick=()=>{ closeSheet(); renderHome(); afterPlacement(); };
-  $("#plYes").onclick=()=>{ S.stage=Math.max(S.stage, plan.st); S.sp={}; save(); closeSheet(); renderHome(); afterPlacement(); };
+  placeOffer(go, nm);
+}
+function placeOffer(then, nm){
+  openSheet(`<span class="label">${L("Placement test","Placement test")}</span>
+    <div class="mentor">${owlSVG()}<div class="bubble">${nm? L(`${nm}, `,`${nm}, `):""}${L("aap pehle se kuch jaante ho? 5 minute ka test do: 10 sawal aur 1 chart task. Achha score hua to aap aage ke stage se shuru karo ge aur Funded Safar mein seedha aage jao ge.","do you already know some trading? Take a 5-minute test: 10 questions and 1 chart task. A good score starts you at a later stage and moves you ahead on your Funded journey.")}</div></div>
+    <div class="row"><button class="btn ghost" id="ptNo" style="flex:1">${L("Shuru se","From the start")}</button><button class="btn primary" id="ptYes" style="flex:2">${L("Test do","Take the test")}</button></div>`);
+  $("#ptNo").onclick=()=>{ closeSheet(); then(); };
+  $("#ptYes").onclick=()=>placementTest(then);
+}
+const PQ = [
+  {c:"basics", q:["Hari (green) candle ka matlab?","What does a green candle mean?"], a:[["Close, open se upar hua","It closed above its open"],["Close, open se neeche hua","It closed below its open"],["Market band thi","The market was closed"]], w:["Hari candle: qeemat upar band hui.","Green candle: price closed higher."]},
+  {c:"basics", q:["EUR/USD mein 1 pip kitna hota hai?","How much is 1 pip on EUR/USD?"], a:[["0.0001","0.0001"],["0.01","0.01"],["1.0","1.0"]], w:["Zyada tar pairs mein pip chautha decimal hai (JPY pairs mein doosra).","On most pairs a pip is the 4th decimal (2nd on JPY pairs)."]},
+  {c:"basics", q:["Aap ko lagta hai qeemat neeche jaye gi. Aap kya karo ge?","You think price will fall. What do you do?"], a:[["Sell","Sell"],["Buy","Buy"],["Kuch nahi ho sakta","Nothing can be done"]], w:["Girti qeemat se faida Sell (short) se hota hai.","You profit from a fall by selling (going short)."]},
+  {c:"risk", q:["Stop-loss ka asal kaam kya hai?","What is a stop-loss really for?"], a:[["Loss ko pehle se tay had par rokna","Capping a loss at a pre-set level"],["Profit pakka karna","Locking in profit"],["Broker ki fees kam karna","Lowering broker fees"]], w:["SL loss ki had tay karta hai, profit ki guarantee nahi.","A stop-loss caps the loss; it guarantees no profit."]},
+  {c:"risk", q:["$1,000 account, 1% risk per trade. Aik trade par zyada se zyada kitna nuqsaan?","$1,000 account, 1% risk per trade. Most you can lose on one trade?"], a:[["$10","$10"],["$100","$100"],["$1","$1"]], w:["1% of $1,000 = $10. Lot size SL ke hisaab se is $10 par set hota hai.","1% of $1,000 = $10. Lot size is set from the stop so the loss is $10."]},
+  {c:"risk", q:["Risk 1, target 2 (1:2). 10 trades mein kam se kam kitni jeet kar profit mein ho sakte ho (fees chhor kar)?","Risk 1, target 2 (1:2). Fewest wins out of 10 to be in profit (ignoring fees)?"], a:[["4","4"],["7","7"],["10","10"]], w:["4 jeet x 2 = +8, 6 haar = -6. Kul +2.","4 wins x 2 = +8, 6 losses = -6. Net +2."]},
+  {c:"analysis", q:["Uptrend ki pehchan kya hai?","How do you recognise an uptrend?"], a:[["Higher highs aur higher lows","Higher highs and higher lows"],["Lower highs aur lower lows","Lower highs and lower lows"],["Sirf aik bari hari candle","One big green candle"]], w:["Trend highs aur lows ki tarteeb se pehchana jaata hai.","A trend is read from the sequence of highs and lows."]},
+  {c:"analysis", q:["Support kya hai?","What is support?"], a:[["Jahan girti qeemat pehle ruk kar wapas upar gayi","A level where falling price stopped and bounced before"],["Broker ki customer support","The broker's customer support"],["Hamesha ki sab se neechi qeemat","The all-time lowest price"]], w:["Support aik zone hai jahan buyers pehle aaye thay.","Support is a zone where buyers stepped in before."]},
+  {c:"mind", q:["Group mein message: \"100% sure shot, 10x guaranteed\". Sahi soch?","A group message says \"100% sure shot, 10x guaranteed\". The right view?"], a:[["Khatre ki nishani. Trading mein guarantee nahi hoti","A red flag. Trading has no guarantees"],["Foran full lot lagao","Go full lot right away"],["Dost ne bheja hai to theek hoga","A friend sent it, so it must be fine"]], w:["Jo guarantee de, woh ya to jhoot hai ya scam.","Anyone promising guarantees is lying or running a scam."]},
+  {c:"mind", q:["Do loss lagataar hue. Ab behtar kya hai?","Two losses in a row. What is better now?"], a:[["Ruk kar journal likho, plan dekho","Pause, write the journal, review the plan"],["Double lot laga kar recover karo","Double the lot to win it back"],["Plan chhor kar jaldi trade lo","Drop the plan and trade fast"]], w:["Revenge trading sab se bara account killer hai.","Revenge trading is the biggest account killer."]},
+  {c:"chart", chart:true, q:["Chart dekho: uptrend, aur qeemat support (dashed line) par wapas aayi. Buy entry ke liye stop-loss kahan?","Look at the chart: an uptrend, and price pulled back to support (dashed line). For a buy entry, where does the stop-loss go?"], a:[["Support ke thora neeche","Just below support"],["Entry ke bilkul upar","Just above the entry"],["Stop-loss ki zaroorat nahi","No stop-loss needed"]], w:["Buy ka SL us level ke neeche jahan aap ka idea ghalat sabit ho: support ke neeche.","A buy's stop sits where the idea is proven wrong: below support."]}
+];
+const PCAT = {basics:["Basics","Basics"], risk:["Risk","Risk"], analysis:["Analysis","Analysis"], mind:["Psychology","Psychology"], chart:["Chart task","Chart task"]};
+function placeChartSVG(){
+  // deterministic uptrend with a pullback to a dashed support line
+  const W=320,H=170, cs=[], seq=[[100,104],[104,103],[103,108],[108,112],[112,110],[110,115],[115,119],[119,116],[116,113],[113,111],[111,114]];
+  const lo=95, hi=124, y=v=>8+(hi-v)/(hi-lo)*(H-16), w=W/(seq.length+2);
+  seq.forEach(([o,c],i)=>{ const x=w*(i+1), up=c>=o, col=up?"#2fd08a":"#ff5d6c", t=y(Math.max(o,c))-4, b=y(Math.min(o,c))+4;
+    cs.push(`<line x1="${x}" x2="${x}" y1="${t-6}" y2="${b+6}" stroke="${col}"/><rect x="${x-w*.3}" y="${y(Math.max(o,c))}" width="${w*.6}" height="${Math.max(2,Math.abs(y(o)-y(c)))}" fill="${col}"/>`); });
+  const sy=y(110.5);
+  return `<svg class="qchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${L("Uptrend chart, qeemat support line par wapas","Uptrend chart, price back at support")}">
+    <line x1="0" x2="${W}" y1="${sy}" y2="${sy}" stroke="#e3b04b" stroke-dasharray="5 4"/><text x="6" y="${sy+14}" fill="#e3b04b" font-size="10" font-family="JetBrains Mono,monospace">SUPPORT</text>
+    ${cs.join("")}<text x="${w*11-8}" y="${y(114)-14}" fill="#a3b0c4" font-size="10" font-family="JetBrains Mono,monospace" text-anchor="end">ENTRY?</text></svg>`;
+}
+function placementTest(then){
+  const order=PQ.map((q,i)=>i); // fixed order, chart last
+  const res=[]; let i=0;
+  const ask=()=>{
+    const Q=PQ[order[i]], opts=Q.a.map((x,k)=>({t:L(x[0],x[1]),k})); for(let j=opts.length-1;j>0;j--){ const r=Math.floor(Math.random()*(j+1)); [opts[j],opts[r]]=[opts[r],opts[j]]; }
+    openSheet(`<div class="row between"><span class="label">${L("Placement test","Placement test")} · ${i+1} / ${PQ.length}</span><span class="pill">${L(PCAT[Q.c][0],PCAT[Q.c][1])}</span></div>
+      <div class="qbar"><i style="width:${i/PQ.length*100}%"></i></div>
+      ${Q.chart? placeChartSVG():""}
+      <h3 style="font-size:17px;line-height:1.35">${L(Q.q[0],Q.q[1])}</h3>
+      <div class="qopts">${opts.map(o=>`<button class="btn" data-k="${o.k}">${o.t}</button>`).join("")}</div>
+      <p class="muted" id="qWhy" style="font-size:14px" hidden></p>
+      <button class="btn primary block" id="qNext" hidden style="min-height:48px">${i<PQ.length-1? L("Agla sawal","Next question") : L("Result dekho","See result")}</button>`);
+    $$("#sheet .qopts .btn").forEach(b=>b.onclick=()=>{
+      const ok=+b.dataset.k===0; res.push({c:Q.c,ok});
+      $$("#sheet .qopts .btn").forEach(x=>{ x.disabled=true; if(+x.dataset.k===0) x.classList.add("right"); });
+      if(!ok) b.classList.add("wrong");
+      sfx(ok?"coin":"tap");
+      const why=$("#qWhy"); why.innerHTML=`<b>${ok?L("Sahi.","Right."):L("Ghalat.","Not quite.")}</b> ${L(Q.w[0],Q.w[1])}`; why.hidden=false;
+      const nx=$("#qNext"); nx.hidden=false; nx.focus(); nx.onclick=()=>{ i++; if(i<PQ.length) ask(); else finish(); };
+    });
+  };
+  const finish=()=>{
+    const score=res.filter(r=>r.ok).length, chartOk=res[res.length-1].ok;
+    const plan = (score>=9 && chartOk)? {st:4, xp:900} : score>=6? {st:2, xp:300} : {st:0, xp:0};
+    const before=fundedPct();
+    S.placeTest={score, of:PQ.length, at:new Date().toISOString()};
+    S.xp=Math.max(S.xp, plan.xp); if(plan.st>S.stage){ S.stage=plan.st; S.sp={}; }
+    save(); const after=fundedPct();
+    const cats=Object.keys(PCAT).map(c=>{ const r=res.filter(x=>x.c===c); return `<div><span class="label">${L(PCAT[c][0],PCAT[c][1])}</span><b>${r.filter(x=>x.ok).length} / ${r.length}</b></div>`; }).join("");
+    const weak=Object.keys(PCAT).filter(c=>res.filter(x=>x.c===c&&!x.ok).length).map(c=>L(PCAT[c][0],PCAT[c][1]));
+    const where = plan.st===0? L("Aap shuru se chalein ge. Bunyaad mazboot hogi to aage tez chalein ge.","You will start from the beginning. A strong base makes the rest faster.")
+      : L(`Aap seedha <b>Stage ${plan.st+1}: ${STAGES[plan.st].name}</b> se shuru karo ge.`,`You start straight at <b>Stage ${plan.st+1}: ${trText(STAGES[plan.st].name)}</b>.`);
+    openSheet(`<span class="label">${L("Placement result","Placement result")}</span>
+      <h2>${score} / ${PQ.length}</h2>
+      <div class="qres">${cats}</div>
+      <div class="mentor">${owlSVG()}<div class="bubble">${where}${weak.length? `<br><span class="muted" style="font-size:13px">${L("Kamzor hissa:","Weak areas:")} ${weak.join(", ")}</span>`:""}</div></div>
+      <p class="fnext">${L("Funded Safar","Funded journey")}: <b>${before}% → ${after}%</b></p>
+      <button class="btn primary block" id="ptDone" style="min-height:50px">${L("Chalo","Let's go")}</button>`);
+    $("#ptDone").onclick=()=>{ closeSheet(); renderHome(); then(); };
+  };
+  ask();
 }
 function settingsSheet(){
   const p=S.profile;
@@ -1580,7 +1679,7 @@ function renderHome(){
   $("#xpNext").innerHTML = nxt? `<span>${(nxt.xp-S.xp).toLocaleString("en-US")} XP aur, phir</span> <b>${nxt.name}</b>` : "Aap Legend ho. Safar phir bhi jaari hai.";
   $("#ladder").innerHTML = RANKS.map((k,i)=>`<span class="${i<=r?'on':''}">${k.name}</span>`).join("");
   $("#stBal").textContent = fmt$(S.bal); $("#stStreak").textContent = S.streak+" din"; $("#stDay").textContent = S.day;
-  try{ renderLifeCard(); renderHero(); }catch(e){ console.warn(e); }
+  try{ renderLifeCard(); renderHero(); renderFunded(); }catch(e){ console.warn(e); }
   const ch = ensureChallenge();
   $("#chText").textContent = ch.t + (ch.id==="puzzle3" && !S.ch.done? ` (${Math.min(S.ch.puz||0,3)}/3)`:"");
   $("#chTick").className = "tick"+(S.ch.done?" done":""); $("#chTick").textContent = S.ch.done? "✓":"";
@@ -2671,6 +2770,36 @@ function lifeInit(){
     save();
   }
 }
+function fundedSteps(){
+  ensureAcad(); const ex=S.acad.exam, certs=(S.acad.certs||[]).length;
+  return [
+    {ur:"Kahani: Chapter 1", en:"Story: Chapter 1", p:(S.story&&S.story.c1)?1:0, go:()=>{ closeSheet(); storyStart(); }},
+    {ur:"Core stages 1 se 6", en:"Core stages 1 to 6", p:Math.min(S.stage,ACAD_REQ.stage)/ACAD_REQ.stage, go:()=>{ closeSheet(); nextAction().run(); }},
+    {ur:"Pro rank (2,000 XP)", en:"Pro rank (2,000 XP)", p:Math.min(S.xp,ACAD_REQ.xp)/ACAD_REQ.xp, go:()=>{ closeSheet(); nextAction().run(); }},
+    {ur:"30 practice sessions", en:"30 practice sessions", p:Math.min(sessions(),ACAD_REQ.sessions)/ACAD_REQ.sessions, go:()=>{ closeSheet(); demoSheet(); }},
+    {ur:"Risk aur knowledge exam (8/10)", en:"Risk and knowledge exam (8/10)", p:(ex&&ex.best>=ACAD_REQ.examPass)?1:(ex? Math.min(.9,ex.best/10):0), go:()=>{ closeSheet(); showAcademy(); }},
+    {ur:"Funded Challenge paas (simulation)", en:"Pass a Funded Challenge (simulation)", p:certs?1:0, go:()=>{ closeSheet(); showAcademy(); }}
+  ];
+}
+function fundedPct(){ const st=fundedSteps(); return Math.round(st.reduce((a,x)=>a+x.p,0)/st.length*100); }
+function renderFunded(){
+  const st=fundedSteps(), pct=fundedPct(), nx=st.find(x=>x.p<1);
+  $("#fundPct").textContent=pct+"%";
+  $("#fundSteps").innerHTML=st.map(x=>`<i><b style="width:${Math.round(x.p*100)}%"></b></i>`).join("");
+  $("#fundNext").innerHTML= nx? `${L("Agla qadam","Next step")}: <b>${L(nx.ur,nx.en)}</b>` : `<b>${L("Aap simulation mein Funded ke liye tayyar ho.","You are funded-ready in the simulation.")}</b>`;
+}
+function fundedSheet(){
+  const st=fundedSteps(), pct=fundedPct(), nx=st.findIndex(x=>x.p<1);
+  openSheet(`<div class="row between"><span class="label">${L("Mera Funded Safar","My Funded journey")}</span><button class="btn ghost" id="fsX" style="min-height:36px;padding:0 12px;font-size:13px">${L("Band","Close")}</button></div>
+    <h2>${pct}% ${L("mukammal","complete")}</h2>
+    <p class="muted" style="font-size:14px">${L("Prop firm aap ko apna paisa trade karne deti hai, lekin pehle challenge paas karna hota hai. Yeh 6 qadam aap ko us challenge ke liye tayyar karte hain.","A prop firm lets you trade its money, but first you must pass a challenge. These 6 steps prepare you for that challenge.")}</p>
+    <div>${st.map((x,k)=>`<div class="fstep ${x.p>=1?"done":""}"><span class="n">${x.p>=1?"✓":k+1}</span><div style="min-width:0"><div style="font-weight:500">${L(x.ur,x.en)}</div>${x.p<1&&x.p>0?`<div class="bar"><i style="width:${Math.round(x.p*100)}%"></i></div>`:""}</div>${k===nx?`<button class="btn primary" data-k="${k}" style="min-height:38px;padding:0 12px;font-size:13px">${L("Chalo","Go")}</button>`:""}</div>`).join("")}</div>
+    ${S.placeTest? "" : `<button class="btn ghost block" id="fsTest" style="min-height:46px">${L("Pehle se jaante ho? 5 minute placement test do","Already know some? Take the 5-minute placement test")}</button>`}
+    <p class="muted" style="font-size:12px">${L("Yeh sab simulation hai. Koi bhi app ya prop firm funding ya kamai ki guarantee nahi de sakti. Zyada tar log asli challenge pehli baar paas nahi karte, isi liye pehle yahan practice.","This is all a simulation. No app or prop firm can guarantee funding or income. Most people do not pass a real challenge on the first try, which is why you practise here first.")}</p>`);
+  $("#fsX").onclick=closeSheet;
+  $$("#sheet .fstep [data-k]").forEach(b=>b.onclick=()=>st[+b.dataset.k].go());
+  const t=$("#fsTest"); if(t) t.onclick=()=>placementTest(()=>{});
+}
 function renderLifeCard(){
   lifeInit(); const cur=LIFE[S.life], nx=LIFE[S.life+1];
   $("#lifeThumb").src=`img/${cur.img}.jpg`; $("#lifeName").textContent=L(cur.ur,cur.en);
@@ -3274,6 +3403,7 @@ $("#acadBack").onclick = ()=>{ show("home"); renderHome(); };
 $("#btnStory").onclick = ()=>storyStart();
 $("#btnStory2").onclick = ()=>storyStart();
 $("#btnLife").onclick = showRoom;
+$("#fundedCard").onclick = fundedSheet;
 $("#roomBack").onclick = ()=>{ show("home"); renderHome(); };
 document.addEventListener("visibilitychange", ()=>{ try{ if(document.hidden){ V&&V.st.stop(); R&&R.st.stop(); } else { if(V && !$("#home").hidden) V.st.start(); if(R && !$("#room").hidden) R.st.start(); } }catch(e){} });
 $("#btnPlay").onclick = ()=>nextAction().run();
